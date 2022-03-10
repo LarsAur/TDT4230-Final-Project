@@ -9,5 +9,5 @@ build:
 
 clean:
 	-del /q /s build\*
-	-rmdir /q /s build\*
+	-rmdir /q /s build
 	-mkdir build && cd build && copy NUL .gitkeep

@@ -5,6 +5,7 @@
 #include <shader.hpp>
 #include <window.hpp>
 #include <camera.hpp>
+#include <mesh.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
@@ -27,18 +28,25 @@ int main()
     shader.link();
     shader.activate();
 
-    unsigned int vao, vbo;
+    Cube cube(glm::vec3(0.1f, 0.2f, 0.3f), false);
+    cube.generateVertexData(&shader);
+
+    
+
+    /* unsigned int vao, vbo;
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
 
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
     int positionLocation = glGetAttribLocation(shader.getProgramID(), "position");
 
     glVertexAttribPointer(positionLocation, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(positionLocation);
+    */
+
+
 
     window.disableCursor();
 
@@ -65,8 +73,8 @@ int main()
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glBindVertexArray(cube.vao);
+        glDrawElements(GL_TRIANGLES, cube.indices.size(), GL_UNSIGNED_INT, nullptr);
 
         window.swapBuffers();
         

@@ -44,9 +44,9 @@ public:
         glm::vec3 pitchVector = glm::vec3(1, 0, 0);
         glm::mat4 camera = glm::identity<glm::mat4>();
         
+        camera = glm::translate(camera, mPosition);
         camera = glm::rotate(camera, mAngles[0], upVector);
         camera = glm::rotate(camera, mAngles[1], pitchVector);
-        camera = glm::translate(camera, mPosition);
         
         glm::mat4 view = glm::inverse(camera);
         return view;

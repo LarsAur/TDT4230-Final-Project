@@ -4,6 +4,7 @@
 
 #include <fstream>
 #include <memory>
+#include <iostream>
 
 class Shader {
     private:
@@ -111,5 +112,10 @@ class Shader {
         int getUniformLocation(const char* name)
         {
             return glGetUniformLocation(mProgramID, name);
+        }
+
+        int getAttributeLocation(const char* name)
+        {
+            return glGetAttribLocation(mProgramID, name);
         }
 };

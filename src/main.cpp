@@ -3,38 +3,23 @@
 #include <iostream>
 
 #include <shader.hpp>
+#include <window.hpp>
+#include <camera.hpp>
+#include <glm/mat4x4.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 float vertices[] = {
-    -0.5f, -0.5f, 0.0f, // left
-    0.5f, -0.5f, 0.0f,  // right
-    0.0f, 0.5f, 0.0f    // top
+    -0.5f, -0.5f, 1.0f, // left
+    0.5f, -0.5f, 1.0f,  // right
+    0.0f, 0.5f, 1.0f    // top
 };
 
-void framebuffer_size_callback(GLFWwindow *window, int width, int height);
-
-int main(int argc, char *argv[])
+int main()
 {
+    Window window(1000, 1000, "Portal");
 
-    if (!glfwInit())
-    {
-        std::cout << "Failed to init GLFW" << std::endl;
-    }
-
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-    GLFWwindow *window = glfwCreateWindow(1200, 800, "Portal", NULL, NULL);
-    if (!window)
-    {
-        std::cout << "Failed to initialize window" << std::endl;
-        glfwTerminate();
-    }
-
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-    glfwSwapInterval(1);
+    Camera fpCamera(&window, glm::vec3(0), glm::vec3(0), M_PI / 2, 0.1f, 5.0f);
 
     Shader shader;
     shader.attach("../shaders/test.vert");
@@ -52,29 +37,43 @@ int main(int argc, char *argv[])
 
     int positionLocation = glGetAttribLocation(shader.getProgramID(), "position");
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(positionLocation, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(positionLocation);
 
-    while (!glfwWindowShouldClose(window))
+    window.disableCursor();
+
+    while (!window.shouldClose())
     {
-        int width, height;
-        glfwGetFramebufferSize(window, &width, &height);
-        glViewport(0, 0, width, height);
+        window.updateInput();
+        
+        glm::mat4 view = fpCamera.getViewMatrix();
+        glm::mat4 proj = fpCamera.getPerspectiveMatrix();
+
+        int uViewLoc = shader.getUniformLocation("view");
+        int uProjLoc = shader.getUniformLocation("proj");
+
+        fpCamera.rotateClamp(glm::vec3(-window.getMouseDelta().x / 500, -window.getMouseDelta().y / 500, 0.0f));
+        fpCamera.translate(glm::vec3(
+            (window.isKeyDown(GLFW_KEY_D) - window.isKeyDown(GLFW_KEY_A)) / 500.0f,
+            0.0f,
+            (window.isKeyDown(GLFW_KEY_W) - window.isKeyDown(GLFW_KEY_S)) / 500.0f
+        ));
+
+        glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
+
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glBindVertexArray(vao);
         glDrawArrays(GL_TRIANGLES, 0, 3);
 
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+        window.swapBuffers();
+        
+        if(window.isKeyDown(GLFW_KEY_ESCAPE))
+            window.close();
     }
 
-    glfwDestroyWindow(window);
+    window.destroy();
     glfwTerminate();
-}
-
-void framebuffer_size_callback(GLFWwindow *window, int width, int height)
-{
-    glViewport(0, 0, width, height);
 }

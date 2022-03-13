@@ -12,20 +12,20 @@
 #include <glm/gtx/string_cast.hpp>
 
 
-class Camera : private Node
+class Camera : public Node
 {
 private:
     Window *mWindow;
-    glm::vec3 mAngles;
     float mfov;
     float mnear;
     float mfar;
 
+
 public:
-    Camera(Window *window, glm::vec3 position, glm::vec3 angles, float fov, float near, float far)
+    Camera(Window *window, glm::vec3 position, glm::vec3 rotation, float fov, float near, float far)
     {
         setPosition(position);
-        mAngles = angles;
+        setRotation(rotation);
         mfov = fov;
         mnear = near;
         mfar = far;
@@ -45,26 +45,46 @@ public:
         glm::mat4 camera = glm::identity<glm::mat4>();
         
         camera = glm::translate(camera, mPosition);
-        camera = glm::rotate(camera, mAngles[0], upVector);
-        camera = glm::rotate(camera, mAngles[1], pitchVector);
+        camera = glm::rotate(camera, mRotation.y, upVector);
+        camera = glm::rotate(camera, mRotation.x, pitchVector);
         
         glm::mat4 view = glm::inverse(camera);
         return view;
     }
 
-    void translate(glm::vec3 deltaPosition)
+    void cameraTranslate(glm::vec3 translation)
     {
-        mPosition += deltaPosition;
+        glm::vec3 upVector = glm::vec3(0, 1, 0);
+        glm::vec3 forwardVector = get2DLookingVector();
+        glm::vec3 rightVector = glm::cross(forwardVector, upVector);
+
+        mPosition+= translation[0] * rightVector + 
+                    translation[1] * upVector +
+                    translation[2] * forwardVector;
     }
 
-    void rotate(glm::vec3 deltaAngles)
+    void rotateClamp(glm::vec3 rotation)
     {
-        mAngles += deltaAngles;
+        mRotation += rotation;
+        mRotation.x = std::min(std::max((double) mRotation.x, -M_PI / 2 + 0.1f), M_PI / 2 - 0.1f);
     }
 
-    void rotateClamp(glm::vec3 deltaAngles)
+    glm::vec3 get3DLookingVector()
     {
-        mAngles += deltaAngles;
-        mAngles[1] = std::min(std::max((double) mAngles[1], -M_PI / 2 + 0.1f), M_PI / 2 - 0.1f);
+        return glm::vec3(
+            sin(mRotation.y) * sin(mRotation.x),
+            cos(mRotation.x),
+            cos(mRotation.y) * sin(mRotation.x)
+        );
+    }
+
+    // The y (up) component is set to zero
+    glm::vec3 get2DLookingVector()
+    {
+        return -glm::vec3(
+            sin(mRotation.y),
+            0,
+            cos(mRotation.y)
+        );
     }
 };

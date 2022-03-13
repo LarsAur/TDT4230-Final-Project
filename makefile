@@ -1,4 +1,4 @@
-
+# TODO: https://stackoverflow.com/questions/714100/os-detecting-makefile
 .PHONY: run build clean
 
 run:

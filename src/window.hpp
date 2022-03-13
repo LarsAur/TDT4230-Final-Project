@@ -62,6 +62,7 @@ public:
 		}
 
 		glfwMakeContextCurrent(mWindow);
+		glfwWindowHint(GLFW_SAMPLES, 4);
 		gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 		glfwSwapInterval(1);
 		

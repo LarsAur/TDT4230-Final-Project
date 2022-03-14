@@ -38,15 +38,20 @@ if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/libs/glad/include)
 	message("Finished generating glad library files")
 endif()
 
+#
+#SOIL
+#
+add_subdirectory(libs/soil)
+
 include_directories(
     src/
     libs/glad/include/
     libs/glfw/include/
     libs/glm/
-    libs/soil/
+    libs/soil/inc/
 )
 
-file (GLOB VENDORS_SOURCES libs/glad/src/glad.c)
+file (GLOB GLAD_SOURCES libs/glad/src/glad.c)
 file(GLOB_RECURSE PROJECT_SOURCES src/*.cpp)
 
 add_definitions(
@@ -54,11 +59,13 @@ add_definitions(
     -DPROJECT_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"
 )
 
-add_executable(${PROJECT_NAME} ${PROJECT_SOURCES} ${VENDORS_SOURCES})
+add_executable(${PROJECT_NAME} ${PROJECT_SOURCES} ${GLAD_SOURCES})
 
 target_link_libraries(
     ${PROJECT_NAME} 
     glfw 
     ${GLFW_LIBRARIES}
-    ${GLAD_LIBRARIES}    
+    ${GLAD_LIBRARIES}
+    soil
+    opengl32
 )

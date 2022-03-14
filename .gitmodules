@@ -9,4 +9,4 @@
 	url = https://github.com/g-truc/glm.git
 [submodule "libs/soil"]
 	path = libs/soil
-	url = https://github.com/littlstar/soil.git
+	url = https://github.com/paralin/soil.git

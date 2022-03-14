@@ -2,17 +2,21 @@
 
 #include <algorithm>
 #include <shader.hpp>
+#include <node.hpp>
+#include <texture.hpp>
 #include <glad/glad.h>
 #include <glm/vec3.hpp>
 #include <glm/vec2.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <vector>
 #include <iostream>
 #include <sstream>
-#include <node.hpp>
 
 class Mesh : public Node
 {
 private:
+    Shader *mShader = nullptr;
+
     template <class T>
     void generateAttribute(int location, int elementsPerEntry, std::vector<T> data, bool normalize)
     {
@@ -32,6 +36,7 @@ public:
     std::vector<glm::vec3> vertices;
     std::vector<glm::vec3> normals;
     std::vector<glm::vec2> textureCoordinates;
+    Texture *albedo = nullptr;
 
     void generateVertexData(Shader *shader)
     {
@@ -50,12 +55,21 @@ public:
         glGenBuffers(1, &ebo);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+
+        mShader = shader;
     }
 
     void render()
     {
-
+        int uModlLoc = mShader->getUniformLocation("model");
+        glUniformMatrix4fv(uModlLoc, 1, GL_FALSE, glm::value_ptr(getTransformMatrix()));
         glBindVertexArray(vao);
+        
+        if(albedo)
+        {
+            albedo->bind(0);
+        }
+
         glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
     }
 };
@@ -96,7 +110,8 @@ public:
                 }
                 else if(type == "vt")
                 {
-                    tmpTex.push_back(glm::vec2(v1, v2));
+                    // Note we are flipping the texture coordinates, instead of flipping the texture
+                    tmpTex.push_back(glm::vec2(v1, 1-v2));
                 }
                 else if(type == "vn")
                 {

@@ -7,6 +7,7 @@
 #include <camera.hpp>
 #include <mesh.hpp>
 #include <node.hpp>
+#include <texture.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
@@ -15,7 +16,7 @@ int main()
 {
     Window window(1000, 1000, "Portal");
 
-    Camera fpCamera(&window, glm::vec3(0), glm::vec3(0), M_PI / 2, 0.001f, 150.0f);
+    Camera fpCamera(&window, glm::vec3(0), glm::vec3(0), M_PI / 2, 0.001f, 200.0f);
 
     Shader shader;
     shader.attach("../shaders/test.vert");
@@ -24,7 +25,7 @@ int main()
     shader.activate();
 
     Node root;
-    Cube cube(glm::vec3(100.0f, 100.0f, 100.0f), true);
+    Cube cube(glm::vec3(50.0f, 50.0f, 50.0f), true);
     ObjMesh chamber("../res/models/map.obj", 10.0f);
     ObjMesh portalGun("../res/models/PortalGun.obj", 0.01f);
     
@@ -32,6 +33,9 @@ int main()
     root.addChild(&cube);
     root.addChild(&chamber);
     root.addChild(&portalGun);
+
+    Texture portalGunAlbedo("../res/textures/portalgun_col.jpg");
+    portalGun.albedo = &portalGunAlbedo;
 
     chamber.generateVertexData(&shader);
     cube.generateVertexData(&shader);
@@ -60,7 +64,6 @@ int main()
 
         int uViewLoc = shader.getUniformLocation("view");
         int uProjLoc = shader.getUniformLocation("proj");
-        int uModlLoc = shader.getUniformLocation("model");
 
         fpCamera.rotateClamp(glm::vec3(-window.getMouseDelta().y / 500, -window.getMouseDelta().x / 500, 0.0f));
         fpCamera.cameraTranslate(glm::vec3(
@@ -77,14 +80,9 @@ int main()
         root.updateTransforms();
 
         glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(glm::identity<glm::mat4>()));
-        glUniformMatrix4fv(uModlLoc, 1, GL_FALSE, glm::value_ptr(portalGun.getTransformMatrix()));
         portalGun.render();
         
         glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(uModlLoc, 1, GL_FALSE, glm::value_ptr(cube.getTransformMatrix()));
-        //cube.render();
-
-        glUniformMatrix4fv(uModlLoc, 1, GL_FALSE, glm::value_ptr(chamber.getTransformMatrix()));
         chamber.render();
 
         window.swapBuffers();

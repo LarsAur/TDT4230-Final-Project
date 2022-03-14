@@ -16,7 +16,8 @@ int main()
 {
     Window window(1000, 1000, "Portal");
 
-    Camera fpCamera(&window, glm::vec3(0), glm::vec3(0), M_PI / 2, 0.001f, 200.0f);
+    Camera fpFarCamera(&window, glm::vec3(0), glm::vec3(0), M_PI / 2, 0.1f, 200.0f);
+    Camera fpNearCamera(&window, glm::vec3(0), glm::vec3(0), M_PI / 2, 0.001f, 1.0f);
 
     Shader shader;
     shader.attach("../shaders/test.vert");
@@ -29,13 +30,16 @@ int main()
     ObjMesh chamber("../res/models/map.obj", 10.0f);
     ObjMesh portalGun("../res/models/PortalGun.obj", 0.01f);
     
-    root.addChild(&fpCamera);
+    root.addChild(&fpFarCamera);
+    root.addChild(&fpNearCamera);
     root.addChild(&cube);
     root.addChild(&chamber);
     root.addChild(&portalGun);
 
     Texture portalGunAlbedo("../res/textures/portalgun_col.jpg");
+    Texture wall("../res/textures/wall.png");
     portalGun.albedo = &portalGunAlbedo;
+    chamber.albedo = &wall;
 
     chamber.generateVertexData(&shader);
     cube.generateVertexData(&shader);
@@ -59,29 +63,31 @@ int main()
 
         window.updateInput();
         
-        glm::mat4 view = fpCamera.getViewMatrix();
-        glm::mat4 proj = fpCamera.getPerspectiveMatrix();
+        glm::mat4 view = fpFarCamera.getViewMatrix();
+        glm::mat4 proj = fpFarCamera.getPerspectiveMatrix();
 
         int uViewLoc = shader.getUniformLocation("view");
         int uProjLoc = shader.getUniformLocation("proj");
 
-        fpCamera.rotateClamp(glm::vec3(-window.getMouseDelta().y / 500, -window.getMouseDelta().x / 500, 0.0f));
-        fpCamera.cameraTranslate(glm::vec3(
+        fpFarCamera.rotateClamp(glm::vec3(-window.getMouseDelta().y / 500, -window.getMouseDelta().x / 500, 0.0f));
+        fpFarCamera.cameraTranslate(glm::vec3(
             (window.isKeyDown(GLFW_KEY_D) - window.isKeyDown(GLFW_KEY_A)) / 5.0f,
             (window.isKeyDown(GLFW_KEY_SPACE) - window.isKeyDown(GLFW_KEY_LEFT_SHIFT)) / 5.0f,
             (window.isKeyDown(GLFW_KEY_W) - window.isKeyDown(GLFW_KEY_S)) / 5.0f
         ));
 
-        glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         root.updateTransforms();
 
+
+        glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(fpNearCamera.getPerspectiveMatrix()));
         glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(glm::identity<glm::mat4>()));
         portalGun.render();
         
+        glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
         glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(view));
         chamber.render();
 

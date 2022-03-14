@@ -175,6 +175,39 @@ public:
     }
 };
 
+class Plane : public Mesh
+{
+    public:
+        // Generates a plane in the xy-plane
+        Plane(glm::vec2 dimensions)
+        {
+            float halfW = dimensions.x / 2;
+            float halfH = dimensions.y / 2;
+
+            vertices.push_back(glm::vec3(-halfW, -halfH, 0));
+            vertices.push_back(glm::vec3(halfW, -halfH, 0));
+            vertices.push_back(glm::vec3(halfW, halfH, 0));
+            vertices.push_back(glm::vec3(-halfW, halfH, 0));
+
+            textureCoordinates.push_back(glm::vec2(0, 0));
+            textureCoordinates.push_back(glm::vec2(1, 0));
+            textureCoordinates.push_back(glm::vec2(1, 1));
+            textureCoordinates.push_back(glm::vec2(0, 1));
+
+            normals.push_back(glm::vec3(0, 0, -1));
+            normals.push_back(glm::vec3(0, 0, -1));
+            normals.push_back(glm::vec3(0, 0, -1));
+            normals.push_back(glm::vec3(0, 0, -1));
+
+            indices.push_back(0);
+            indices.push_back(1);
+            indices.push_back(2);
+            indices.push_back(0);
+            indices.push_back(2);
+            indices.push_back(3);
+        }
+};
+
 class Cube : public Mesh
 {
 private:

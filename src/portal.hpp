@@ -7,10 +7,10 @@
 #include <camera.hpp>
 #include <mesh.hpp>
 
-class Portal : public Plane
+class Portal : public Circle
 {
     public:
-        Portal(glm::vec2 dimensions) : Plane(dimensions)
+        Portal(glm::vec2 dimensions) : Circle(dimensions, 100)
         {
 
         }

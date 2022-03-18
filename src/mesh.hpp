@@ -14,7 +14,7 @@
 
 class Mesh : public Node
 {
-private:
+protected:
     Shader *mShader = nullptr;
 
     template <class T>
@@ -64,8 +64,8 @@ public:
         int uModlLoc = mShader->getUniformLocation("model");
         glUniformMatrix4fv(uModlLoc, 1, GL_FALSE, glm::value_ptr(getTransformMatrix()));
         glBindVertexArray(vao);
-        
-        if(albedo)
+
+        if (albedo)
         {
             albedo->bind(0);
         }
@@ -88,50 +88,50 @@ public:
         }
 
         std::string line;
-        std::vector< unsigned int > vertIdx, texIdx, normIdx;
+        std::vector<unsigned int> vertIdx, texIdx, normIdx;
         std::vector<glm::vec3> tmpVerts;
         std::vector<glm::vec3> tmpNorm;
         std::vector<glm::vec2> tmpTex;
 
-        while(!fileStream.eof())
+        while (!fileStream.eof())
         {
             getline(fileStream, line);
 
-            if(line[0] == 'v') // can be geometric vertex, texturecoord, normal or paramter space vertex 
+            if (line[0] == 'v') // can be geometric vertex, texturecoord, normal or paramter space vertex
             {
                 std::string type;
                 float v1, v2, v3;
-                std::istringstream iss( line );
+                std::istringstream iss(line);
                 iss >> type >> v1 >> v2 >> v3;
 
-                if(type == "v") 
+                if (type == "v")
                 {
                     tmpVerts.push_back(glm::vec3(v1, v2, v3) * scale);
                 }
-                else if(type == "vt")
+                else if (type == "vt")
                 {
                     // Note we are flipping the texture coordinates, instead of flipping the texture
-                    tmpTex.push_back(glm::vec2(v1, 1-v2));
+                    tmpTex.push_back(glm::vec2(v1, 1 - v2));
                 }
-                else if(type == "vn")
+                else if (type == "vn")
                 {
-                     tmpNorm.push_back(glm::vec3(v1, v2, v3));
+                    tmpNorm.push_back(glm::vec3(v1, v2, v3));
                 }
-                else if(type == "vp")
+                else if (type == "vp")
                 {
                     std::cout << "Paramter space vertex used" << std::endl;
                 }
             }
-            else if(line[0] == 'f') // Faces
-            { 
+            else if (line[0] == 'f') // Faces
+            {
                 std::string type;
                 unsigned int vi1, vi2, vi3, ti1, ti2, ti3, ni1, ni2, ni3;
                 // TODO: Enable the use of multiple formats other than v/vt
                 std::ptrdiff_t separators = std::count(line.begin(), line.end(), '/');
                 std::replace(line.begin(), line.end(), '/', ' ');
-                std::istringstream iss( line );
-                
-                if(separators == 6)
+                std::istringstream iss(line);
+
+                if (separators == 6)
                 {
                     // TODO: This could also include the version without UVs
                     iss >> type >> vi1 >> ti1 >> ni1 >> vi2 >> ti2 >> ni2 >> vi3 >> ti3 >> ni1;
@@ -139,7 +139,7 @@ public:
                     normIdx.push_back(ni2);
                     normIdx.push_back(ni3);
                 }
-                else if(separators == 3)
+                else if (separators == 3)
                 {
                     iss >> type >> vi1 >> ti1 >> vi2 >> ti2 >> vi3 >> ti3;
                 }
@@ -153,7 +153,7 @@ public:
             }
         }
 
-        for(unsigned int i = 0; i < vertIdx.size(); i++)
+        for (unsigned int i = 0; i < vertIdx.size(); i++)
         {
             int index = vertIdx[i];
             glm::vec3 vertex = tmpVerts[index - 1]; // .OBJ indexing starts at 1
@@ -161,13 +161,13 @@ public:
             indices.push_back(i);
         }
 
-        for(int i : texIdx)
+        for (int i : texIdx)
         {
             glm::vec2 uv = tmpTex[i - 1]; // .OBJ indexing starts at 1
             textureCoordinates.push_back(uv);
         }
 
-        for(int i : normIdx)
+        for (int i : normIdx)
         {
             glm::vec3 normal = tmpNorm[i - 1]; // .OBJ indexing starts at 1
             normals.push_back(normal);
@@ -175,37 +175,74 @@ public:
     }
 };
 
+class Circle : public Mesh
+{
+public:
+    Circle(glm::vec2 dimensions, int triangles)
+    {
+        for (int i = 0; i <= triangles; i++)
+        {
+            vertices.push_back(glm::vec3(
+                dimensions.x * cos(i * M_PI * 2 /  triangles) / 2,
+                dimensions.y * sin(i * M_PI * 2 /  triangles) / 2,
+                0
+            ));
+
+            textureCoordinates.push_back(glm::vec2(
+                (cos(i * M_PI * 2 /  triangles) + 1) / 2,
+                (sin(i * M_PI * 2 /  triangles) + 1) / 2
+            ));
+
+            indices.push_back(i);
+        }
+    }
+
+    void render()
+    {
+        int uModlLoc = mShader->getUniformLocation("model");
+        glUniformMatrix4fv(uModlLoc, 1, GL_FALSE, glm::value_ptr(getTransformMatrix()));
+        glBindVertexArray(vao);
+
+        if (albedo)
+        {
+            albedo->bind(0);
+        }
+
+        glDrawElements(GL_TRIANGLE_FAN, indices.size(), GL_UNSIGNED_INT, nullptr);
+    }
+};
+
 class Plane : public Mesh
 {
-    public:
-        // Generates a plane in the xy-plane
-        Plane(glm::vec2 dimensions)
-        {
-            float halfW = dimensions.x / 2;
-            float halfH = dimensions.y / 2;
+public:
+    // Generates a plane in the xy-plane
+    Plane(glm::vec2 dimensions)
+    {
+        float halfW = dimensions.x / 2;
+        float halfH = dimensions.y / 2;
 
-            vertices.push_back(glm::vec3(-halfW, -halfH, 0));
-            vertices.push_back(glm::vec3(halfW, -halfH, 0));
-            vertices.push_back(glm::vec3(halfW, halfH, 0));
-            vertices.push_back(glm::vec3(-halfW, halfH, 0));
+        vertices.push_back(glm::vec3(-halfW, -halfH, 0));
+        vertices.push_back(glm::vec3(halfW, -halfH, 0));
+        vertices.push_back(glm::vec3(halfW, halfH, 0));
+        vertices.push_back(glm::vec3(-halfW, halfH, 0));
 
-            textureCoordinates.push_back(glm::vec2(0, 0));
-            textureCoordinates.push_back(glm::vec2(1, 0));
-            textureCoordinates.push_back(glm::vec2(1, 1));
-            textureCoordinates.push_back(glm::vec2(0, 1));
+        textureCoordinates.push_back(glm::vec2(0, 0));
+        textureCoordinates.push_back(glm::vec2(1, 0));
+        textureCoordinates.push_back(glm::vec2(1, 1));
+        textureCoordinates.push_back(glm::vec2(0, 1));
 
-            normals.push_back(glm::vec3(0, 0, -1));
-            normals.push_back(glm::vec3(0, 0, -1));
-            normals.push_back(glm::vec3(0, 0, -1));
-            normals.push_back(glm::vec3(0, 0, -1));
+        normals.push_back(glm::vec3(0, 0, -1));
+        normals.push_back(glm::vec3(0, 0, -1));
+        normals.push_back(glm::vec3(0, 0, -1));
+        normals.push_back(glm::vec3(0, 0, -1));
 
-            indices.push_back(0);
-            indices.push_back(1);
-            indices.push_back(2);
-            indices.push_back(0);
-            indices.push_back(2);
-            indices.push_back(3);
-        }
+        indices.push_back(0);
+        indices.push_back(1);
+        indices.push_back(2);
+        indices.push_back(0);
+        indices.push_back(2);
+        indices.push_back(3);
+    }
 };
 
 class Cube : public Mesh
@@ -226,8 +263,7 @@ private:
         glm::vec3(1, 0, 0),
         glm::vec3(-1, 0, 0),
         glm::vec3(0, 0, 1),
-        glm::vec3(0, 0, -1)
-    };
+        glm::vec3(0, 0, -1)};
 
 public:
     Cube(glm::vec3 dimensions, bool inside)

@@ -2,7 +2,9 @@
 
 #include <string>
 #include <glad/glad.h>
-#include <SOIL/SOIL.h>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 class Texture
 {
@@ -14,7 +16,8 @@ class Texture
             glGenTextures(1, &textureID);
             glBindTexture(GL_TEXTURE_2D, textureID);
             int width, height;
-            unsigned char* imageData = SOIL_load_image(path.c_str(), &width, &height, 0, SOIL_LOAD_RGBA);
+            int n;
+            unsigned char* imageData = stbi_load(path.c_str(), &width, &height, &n, 0);
 
             glTexImage2D(
                 GL_TEXTURE_2D,
@@ -28,7 +31,7 @@ class Texture
                 imageData
             );
 
-            SOIL_free_image_data(imageData);
+            stbi_image_free(imageData);
 
             glGenerateMipmap(GL_TEXTURE_2D);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);

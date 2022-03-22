@@ -1,8 +1,11 @@
 # TODO: https://stackoverflow.com/questions/714100/os-detecting-makefile
 .PHONY: run build clean
 
+#run:
+#	cd ./build && make && PortalProject.exe
+
 run:
-	cd ./build && make && PortalProject.exe
+	cd ./build && make && ./PortalProject
 
 debug:
 	cd ./build && make && gdb ./PortalProject.exe

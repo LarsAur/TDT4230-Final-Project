@@ -1,7 +1,13 @@
 #pragma once
 
 #include <glad/glad.h>
-#include <glfw/glfw3.h>
+#ifdef _WIN64
+    #include <glfw/glfw3.h>
+#endif
+
+#ifdef __unix__
+    #include <GLFW/glfw3.h>
+#endif
 #include <string>
 #include <iostream>
 

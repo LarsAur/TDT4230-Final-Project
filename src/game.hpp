@@ -32,4 +32,4 @@ typedef struct gamedata_st
     Shader *shader;
 
     int timestep;
-} game_st;
+} gamedata_st;

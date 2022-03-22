@@ -7,5 +7,5 @@ layout(binding = 0) uniform sampler2D texDiffuse;
 
 void main()
 {
-    gl_FragColor = texture(texDiffuse, fragTextureCoordinate);//vec4(fragTextureCoordinate, 1.0, 1.0);
+    gl_FragColor = texture(texDiffuse, fragTextureCoordinate);
 }

@@ -20,33 +20,32 @@ class Portal : public Circle
         glm::mat4 getViewMatrix(glm::mat4 cameraViewMatrix, Portal *destPortal)
         {
             return (cameraViewMatrix * getTransformMatrix()) 
-                * glm::rotate(glm::mat4(1.0), glm::radians(180.0f), glm::vec3(0.0,1.0,0.0)) // Rotate the camara to look out
+                * glm::rotate(glm::identity<glm::mat4>(), glm::radians(180.0f), glm::vec3(0.0,1.0,0.0)) // Rotate the camara to look out
                 * glm::inverse(destPortal->getTransformMatrix());
         }
 
         glm::vec3 getNormal()
         {
-            return glm::vec3(
-                sin(mRotation.y) * sin(mRotation.x),
-                cos(mRotation.x),
-                cos(mRotation.y) * sin(mRotation.x)
-            );
+            glm::mat4 corrected = glm::rotate(mGlobalTransform, glm::radians(90.0f), glm::vec3(1, 0, 0));
+            return glm::mat3(glm::transpose(glm::inverse(corrected))) * glm::vec3(0, 1, 0);
         }
 
         /* Source: http://www.terathon.com/lengyel/Lengyel-Oblique.pdf */
         glm::mat4 getObliqueProjection(glm::mat4 proj, glm::mat4 view)
         {
-            glm::vec3 clipNormal = -getNormal();
+            glm::vec3 clipNormal = getNormal();
+
+
             float cw = glm::dot(clipNormal, mPosition);
             glm::vec4 clipPlane = glm::inverse(glm::transpose(view)) * glm::vec4(clipNormal, cw);
-            //glm::mat4 invProj = glm::inverse(proj);
             
+
             if(clipPlane.w > 0)
             {
-                //printf("X\n");
+                printf("Normal: (%f, %f, %f)\n", clipNormal.x, clipNormal.y, clipNormal.z);
+                printf("Plane: (%f, %f, %f, %f)\n", clipPlane.x, clipPlane.y, clipPlane.z, clipPlane.w);
                 return proj;
             }
-                //printf("#\n");
 
             glm::vec4 q = glm::vec4(
                 glm::sign(clipPlane.x),

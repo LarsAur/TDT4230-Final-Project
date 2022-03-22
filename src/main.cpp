@@ -85,12 +85,11 @@ void init(gamedata_st &gamedata)
     gamedata.root->addChild(*gamedata.portals[1]);
 
     // Load all textures
-    gamedata.portalGunAlbedo = new Texture("../res/textures/portalgun_col.jpg");
-    gamedata.wall = new Texture("../res/textures/wall.png");
-    gamedata.bluePortalTexture = new Texture("../res/textures/blue_portal.png");
-    gamedata.orangeportalTexture = new Texture("../res/textures/orange_portal.png");
-    gamedata.rubix = new Texture("../res/textures/rubix.jpg");
-    gamedata.portalStencil = new Texture("..res/textures/portal_stencil.png");
+    gamedata.portalGunAlbedo = new Texture("../res/textures/portalgun_col.png", LINEAR);
+    gamedata.wall = new Texture("../res/textures/wall.png", LINEAR);
+    gamedata.bluePortalTexture = new Texture("../res/textures/blue_portal.png", NEAREST);
+    gamedata.orangeportalTexture = new Texture("../res/textures/orange_portal.png", NEAREST);
+    gamedata.rubix = new Texture("../res/textures/rubix.png", NEAREST);
 
     // Assign all initial textures
     gamedata.portalGun->albedo = gamedata.portalGunAlbedo;
@@ -130,7 +129,7 @@ void update(gamedata_st &gamedata)
         gamedata.window->close();
 }
 
-void render(game_st &gamedata)
+void render(gamedata_st &gamedata)
 {
     glm::mat4 view = gamedata.farCamera->getViewMatrix();
     glm::mat4 proj = gamedata.farCamera->getPerspectiveMatrix();
@@ -160,10 +159,8 @@ void render(game_st &gamedata)
 
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
     glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(view));
-    /* glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    glDepthMask(GL_TRUE);
-    gamedata.portals[0]->render();
-    gamedata.portals[1]->render(); */
+
+    renderWorld(gamedata, view, proj);
 
     /* glDisable(GL_DEPTH_TEST);
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(gamedata.nearCamera->getPerspectiveMatrix()));
@@ -176,7 +173,32 @@ void render(game_st &gamedata)
 
 void renderRecursivePortals(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj, int maxDepth, int depth)
 {
+
     int uViewLoc = gamedata.shader->getUniformLocation("view");
+    int uProjLoc = gamedata.shader->getUniformLocation("proj");
+
+    renderWorld(gamedata, view, proj);
+
+    for(int i = 0; i < 1; i++)
+    {
+        for(int i = 0; i < 2; i++)
+        {
+            Portal *src = gamedata.portals[i];
+            Portal *dest = gamedata.portals[(i + 1) % 2];
+
+            src->render();
+
+            glm::mat4 portal_view = src->getViewMatrix(view, dest);
+            glm::mat4 portal_proj = dest->getObliqueProjection(proj, view);
+
+            glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
+            glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+            renderWorld(gamedata, portal_view, portal_proj);
+        }
+    }
+
+    /*int uViewLoc = gamedata.shader->getUniformLocation("view");
     int uProjLoc = gamedata.shader->getUniformLocation("proj");
 
     for (int i = 0; i < 2; i++)
@@ -266,7 +288,7 @@ void renderRecursivePortals(gamedata_st &gamedata, glm::mat4 view, glm::mat4 pro
     glEnable(GL_DEPTH_TEST);
 
     // Draw scene objects normally, only at recursionLevel
-    renderWorld(gamedata, view, proj);
+    renderWorld(gamedata, view, proj);*/
 }
 
 void renderWorld(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj)

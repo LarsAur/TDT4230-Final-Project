@@ -49,10 +49,10 @@ class Node
             return mGlobalTransform;
         }
 
-        void addChild(Node *child)
+        void addChild(Node &child)
         {
-            children.push_back(child);
-            child->mParent = this;
+            children.push_back(&child);
+            child.mParent = this;
         }
 
         void updateTransforms(glm::mat4 transformMatrix = glm::identity<glm::mat4>())

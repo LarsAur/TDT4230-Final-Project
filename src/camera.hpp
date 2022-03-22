@@ -24,14 +24,19 @@ private:
 
 
 public:
-    Camera(Window *window, glm::vec3 position, glm::vec3 rotation, float fov, float near, float far)
+    Camera(Window &window, glm::vec3 position, glm::vec3 rotation, float fov, float near, float far)
     {
         setPosition(position);
         setRotation(rotation);
         mfov = fov;
         mnear = near;
         mfar = far;
-        mWindow = window;
+        mWindow = &window;
+    }
+
+    void setNear(float near)
+    {
+        
     }
 
     glm::mat4 getPerspectiveMatrix()

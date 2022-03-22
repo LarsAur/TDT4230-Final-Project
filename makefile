@@ -4,8 +4,15 @@
 run:
 	cd ./build && make && PortalProject.exe
 
+debug:
+	cd ./build && make && gdb ./PortalProject.exe
+
 build:
 	cmake -G "MinGW Makefiles" -B ./build -S .
+
+buildDebug:
+	cmake -G "MinGW Makefiles" -B ./build -S . -DCMAKE_BUILD_TYPE=Debug
+
 
 clean:
 	-del /q /s build\*

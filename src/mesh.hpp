@@ -38,25 +38,25 @@ public:
     std::vector<glm::vec2> textureCoordinates;
     Texture *albedo = nullptr;
 
-    void generateVertexData(Shader *shader)
+    void generateVertexData(Shader &shader)
     {
         glGenVertexArrays(1, &vao);
         glBindVertexArray(vao);
 
         if (vertices.size() > 0)
-            generateAttribute(shader->getAttributeLocation("position"), 3, vertices, false);
+            generateAttribute(shader.getAttributeLocation("position"), 3, vertices, false);
 
         if (normals.size() > 0)
-            generateAttribute(shader->getAttributeLocation("normal"), 3, normals, false);
+            generateAttribute(shader.getAttributeLocation("normal"), 3, normals, false);
 
         if (textureCoordinates.size() > 0)
-            generateAttribute(shader->getAttributeLocation("textureCoordinate"), 2, textureCoordinates, false);
+            generateAttribute(shader.getAttributeLocation("textureCoordinate"), 2, textureCoordinates, false);
 
         glGenBuffers(1, &ebo);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
 
-        mShader = shader;
+        mShader = &shader;
     }
 
     void render()

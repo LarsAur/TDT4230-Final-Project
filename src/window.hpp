@@ -112,6 +112,11 @@ public:
 		glfwSetInputMode(mWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	}
 
+	double getTime()
+	{
+		return glfwGetTime();
+	}
+
 	// Input handling
 
 	bool isKeyDown(int key)

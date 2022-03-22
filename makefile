@@ -13,6 +13,8 @@ build:
 buildDebug:
 	cmake -G "MinGW Makefiles" -B ./build -S . -DCMAKE_BUILD_TYPE=Debug
 
+build-linux:
+	cmake -B ./build -S .
 
 clean:
 	-del /q /s build\*

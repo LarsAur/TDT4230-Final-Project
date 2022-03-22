@@ -38,19 +38,6 @@ if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/libs/glad/include)
 	message("Finished generating glad library files")
 endif()
 
-#
-#SOIL
-#
-add_subdirectory(libs/soil)
-
-include_directories(
-    src/
-    libs/glad/include/
-    libs/glfw/include/
-    libs/glm/
-    libs/soil/inc/
-)
-
 file (GLOB GLAD_SOURCES libs/glad/src/glad.c)
 file(GLOB_RECURSE PROJECT_SOURCES src/*.cpp)
 
@@ -66,6 +53,4 @@ target_link_libraries(
     glfw 
     ${GLFW_LIBRARIES}
     ${GLAD_LIBRARIES}
-    soil
-    opengl32
 )

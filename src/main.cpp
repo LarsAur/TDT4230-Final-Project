@@ -1,10 +1,10 @@
 #include <glad/glad.h>
 #ifdef _WIN64
-    #include <glfw/glfw3.h>
+#include <glfw/glfw3.h>
 #endif
 
 #ifdef __unix__
-    #include <GLFW/glfw3.h>
+#include <GLFW/glfw3.h>
 #endif
 
 #include <glm/mat4x4.hpp>
@@ -106,7 +106,6 @@ void init(gamedata_st &gamedata)
 
     gamedata.portals[1]->translate(glm::vec3(10, 0, 0));
     gamedata.portals[1]->rotate(glm::vec3(0, -M_PI / 2, 0));
-    gamedata.cube->translate(glm::vec3(0, 0, -2));
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -131,8 +130,7 @@ void update(gamedata_st &gamedata)
 
 void render(gamedata_st &gamedata)
 {
-    glm::mat4 view = gamedata.farCamera->getViewMatrix();
-    glm::mat4 proj = gamedata.farCamera->getPerspectiveMatrix();
+    gamedata.root->updateTransforms();
 
     int uViewLoc = gamedata.shader->getUniformLocation("view");
     int uProjLoc = gamedata.shader->getUniformLocation("proj");
@@ -150,17 +148,10 @@ void render(gamedata_st &gamedata)
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    gamedata.root->updateTransforms();
+    glm::mat4 view = gamedata.farCamera->getViewMatrix();
+    glm::mat4 proj = gamedata.farCamera->getPerspectiveMatrix();
 
-    glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(gamedata.farCamera->getPerspectiveMatrix()));
-    glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(view));
-    
-    renderRecursivePortals(gamedata, view, proj, 5, 0);
-
-    glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
-    glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
-    renderWorld(gamedata, view, proj);
+    renderRecursivePortals(gamedata, view, proj, 1, 0);
 
     /* glDisable(GL_DEPTH_TEST);
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(gamedata.nearCamera->getPerspectiveMatrix()));
@@ -173,122 +164,81 @@ void render(gamedata_st &gamedata)
 
 void renderRecursivePortals(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj, int maxDepth, int depth)
 {
+    glClear(GL_STENCIL_BUFFER_BIT);
 
+    // Disable writing to the stencil buffer, when rendering the world
     int uViewLoc = gamedata.shader->getUniformLocation("view");
     int uProjLoc = gamedata.shader->getUniformLocation("proj");
 
-    renderWorld(gamedata, view, proj);
+    glm::mat4 p1View = view;
+    glm::mat4 p2View = view;
+    glm::mat4 p1Proj = proj;
+    glm::mat4 p2Proj = proj;
 
-    for(int i = 0; i < 1; i++)
+    Portal *p1 = gamedata.portals[0];
+    Portal *p2 = gamedata.portals[1];
+
+    glEnable(GL_STENCIL_TEST);
+    uint8_t i = 0;
+    for (i = 0; i < 3; i++)
     {
-        for(int i = 0; i < 2; i++)
-        {
-            Portal *src = gamedata.portals[i];
-            Portal *dest = gamedata.portals[(i + 1) % 2];
-
-            src->render();
-
-            glm::mat4 portal_view = src->getViewMatrix(view, dest);
-            glm::mat4 portal_proj = dest->getObliqueProjection(proj, view);
-
-            glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
-            glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
-            renderWorld(gamedata, portal_view, portal_proj);
-        }
-    }
-
-    /*int uViewLoc = gamedata.shader->getUniformLocation("view");
-    int uProjLoc = gamedata.shader->getUniformLocation("proj");
-
-    for (int i = 0; i < 2; i++)
-    {
-        Portal *src = gamedata.portals[i];
-        Portal *dest = gamedata.portals[(i + 1) % 2];
-
-        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-        glDepthMask(GL_FALSE);
-        glDisable(GL_DEPTH_TEST);
-        glEnable(GL_STENCIL_TEST);
-        glStencilFunc(GL_NOTEQUAL, depth, 0xff);
-        glStencilOp(GL_INCR, GL_KEEP, GL_KEEP);
         glStencilMask(0xff);
 
-        glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
+        // Render the world inside portal 1
+        glStencilFunc(GL_EQUAL, i, 0xff);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+        renderWorld(gamedata, p1View, p1Proj);
 
-        src->render();
+        // Render the world inside portal 2
+        glStencilFunc(GL_EQUAL, (uint8_t)(-i), 0xff);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+        renderWorld(gamedata, p2View, p2Proj);
 
-        glm::mat4 destView = src->getViewMatrix(view, dest);
-
-        if (depth == maxDepth)
-        {
-            glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-            glDepthMask(GL_TRUE);
-            glClear(GL_DEPTH_BUFFER_BIT);
-            glEnable(GL_DEPTH_TEST);
-            glEnable(GL_STENCIL_TEST);
-
-            glStencilMask(0x00);
-            glStencilFunc(GL_EQUAL, maxDepth + 1, 0xff);
-
-            renderWorld(gamedata, destView, src->getObliqueProjection(proj, view));
-        }
-        else
-        {
-            renderRecursivePortals(gamedata, destView, src->getObliqueProjection(proj, destView), maxDepth, depth + 1);
-        }
-
-        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
         glDepthMask(GL_FALSE);
+        // Create stencil for portal 1
+        glStencilFunc(GL_EQUAL, i, 0xff);
+        glStencilOp(GL_ZERO, GL_ZERO, GL_INCR);
 
-        glEnable(GL_STENCIL_TEST);
-        glStencilMask(0xff);
-        glStencilFunc(GL_NOTEQUAL, depth + 1, 0xff);
+        glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p1View));
+        glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p1Proj));
 
-        glStencilOp(GL_DECR, GL_KEEP, GL_KEEP);
+        p1->render();
 
-        glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
-        src->render();
+        // Create stencil for portal 2
+        glStencilFunc(GL_EQUAL, (uint8_t)(-i), 0xff);
+        glStencilOp(GL_ZERO, GL_ZERO, GL_DECR_WRAP);
+
+        glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p2View));
+        glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p2Proj));
+
+        p2->render();
+
+        glDepthMask(GL_TRUE); 
+
+        // Setup view and projection matrix for next iteration
+        glm::mat4 tmpView = p1View;
+        glm::mat4 tmpProj = p1Proj;
+
+        p1Proj = p1->getObliqueProjection(p1Proj, p2View);
+        p2Proj = p2->getObliqueProjection(p2Proj, p1View);
+        p1View = p1->getViewMatrix(p1View, p2);
+        p2View = p2->getViewMatrix(p2View, p1);
     }
+
+    glDepthMask(GL_FALSE);
+
+    // Render the world inside the portal without rendering another portal
+    glStencilFunc(GL_EQUAL, i, 0xff);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    renderWorld(gamedata, p1View, p1Proj);
+
+    glStencilFunc(GL_EQUAL, (uint8_t)(-i), 0xff);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    renderWorld(gamedata, p2View, p2Proj);
+    
+    glDepthMask(GL_TRUE); 
 
     glDisable(GL_STENCIL_TEST);
-    glStencilMask(0x00);
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    glEnable(GL_DEPTH_TEST);
-    glDepthMask(GL_TRUE);
-    glDepthFunc(GL_ALWAYS);
-    glClear(GL_DEPTH_BUFFER_BIT);
-
-    for (int i = 0; i < 2; i++)
-    {
-        glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
-        glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(view));
-        gamedata.portals[i]->render();
-    }
-
-    // Reset the depth function to the default
-    glDepthFunc(GL_LESS);
-
-    // Enable stencil test and disable writing to stencil buffer
-    glEnable(GL_STENCIL_TEST);
-    glStencilMask(0x00);
-
-    // Draw at stencil >= recursionlevel
-    // which is at the current level or higher (more to the inside)
-    // This basically prevents drawing on the outside of this level.
-    glStencilFunc(GL_LEQUAL, depth, 0xFF);
-
-    // Enable color and depth drawing again
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    glDepthMask(GL_TRUE);
-
-    // And enable the depth test
-    glEnable(GL_DEPTH_TEST);
-
-    // Draw scene objects normally, only at recursionLevel
-    renderWorld(gamedata, view, proj);*/
 }
 
 void renderWorld(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj)
@@ -300,7 +250,7 @@ void renderWorld(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj)
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
     gamedata.cube->render();
-    gamedata.chamber->render();
+    //gamedata.chamber->render();
 }
 
 void destroy(gamedata_st &gamedata)

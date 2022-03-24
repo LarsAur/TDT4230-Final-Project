@@ -12,7 +12,7 @@ typedef enum filter_e
 {
     LINEAR,
     NEAREST
-};
+} filter_e;
 
 class Texture
 {

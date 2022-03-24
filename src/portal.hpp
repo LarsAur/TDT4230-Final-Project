@@ -42,8 +42,8 @@ class Portal : public Circle
 
             if(clipPlane.w > 0)
             {
-                printf("Normal: (%f, %f, %f)\n", clipNormal.x, clipNormal.y, clipNormal.z);
-                printf("Plane: (%f, %f, %f, %f)\n", clipPlane.x, clipPlane.y, clipPlane.z, clipPlane.w);
+                //printf("Normal: (%f, %f, %f)\n", clipNormal.x, clipNormal.y, clipNormal.z);
+                //printf("Plane: (%f, %f, %f, %f)\n", clipPlane.x, clipPlane.y, clipPlane.z, clipPlane.w);
                 return proj;
             }
 

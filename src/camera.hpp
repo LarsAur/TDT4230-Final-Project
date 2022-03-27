@@ -34,11 +34,6 @@ public:
         mWindow = &window;
     }
 
-    void setNear(float near)
-    {
-        
-    }
-
     glm::mat4 getPerspectiveMatrix()
     {
         float aspect = mWindow->getWidth() / (float) mWindow->getHeight();

@@ -10,7 +10,6 @@
 class Node
 {
     protected:
-        Node *mParent;
         std::vector<Node*> children;
         glm::vec3 mPosition;
         glm::vec3 mRotation;
@@ -21,7 +20,6 @@ class Node
         {
             setPosition(glm::vec3(0,0,0));
             setRotation(glm::vec3(0,0,0));
-            Node *mParent = nullptr;
         }
 
         void setPosition(glm::vec3 position)
@@ -52,7 +50,6 @@ class Node
         void addChild(Node &child)
         {
             children.push_back(&child);
-            child.mParent = this;
         }
 
         void updateTransforms(glm::mat4 transformMatrix = glm::identity<glm::mat4>())

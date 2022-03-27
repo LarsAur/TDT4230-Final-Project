@@ -156,7 +156,7 @@ void render(gamedata_st &gamedata)
     glm::mat4 view = gamedata.farCamera->getViewMatrix();
     glm::mat4 proj = gamedata.farCamera->getPerspectiveMatrix();
 
-    renderRecursivePortals(gamedata, view, proj, 4);
+    renderRecursivePortals(gamedata, view, proj, 6);
     
 
     /* glDisable(GL_DEPTH_TEST);
@@ -173,8 +173,6 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
 void renderRecursivePortals(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj, int maxDepth)
 {
     glClear(GL_STENCIL_BUFFER_BIT);
-
-
     glEnable(GL_STENCIL_TEST);
     glStencilMask(0xff);
     
@@ -200,8 +198,6 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
     Portal *p1 = gamedata.portals[0];
     Portal *p2 = gamedata.portals[1];
 
-    glClear(GL_DEPTH_BUFFER_BIT);
-        
     // Render the world inside portal 1
     glStencilFunc(GL_EQUAL, depth, 0xff);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
@@ -212,28 +208,33 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     renderWorld(gamedata, p2View, p2Proj);
 
-    glDepthMask(0x00);
-    // Create stencil for portal 1
-    glStencilFunc(GL_EQUAL, depth, 0xff);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
-
-    glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p1View));
-    glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p1Proj));
-    
-    p1->render();
-
-    // Create stencil for portal 2
-    glStencilFunc(GL_EQUAL, (uint8_t)(-depth), 0xff);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_DECR_WRAP);
-
-    glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p2View));
-    glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p2Proj));
-
-    p2->render();
-    glDepthMask(0xff);
-
     if(depth < maxDepth)
-    {
+    {   
+        // We have to disable the color mask here when drawing the stencils.
+        // This is due to the portal not rendering correcly because the oblique projection matrix
+        // does not create a consitant depth value
+        // This the rendering of the portals have to be done on the way "back out" using the normal projection matrix
+        // This is also to get the correct transparency
+        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+        // Create stencil for portal 1
+        glStencilFunc(GL_EQUAL, depth, 0xff);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+
+        glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p1View));
+        glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p1Proj));
+        
+        p1->render();
+
+        // Create stencil for portal 2
+        glStencilFunc(GL_EQUAL, (uint8_t)(-depth), 0xff);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_DECR_WRAP);
+
+        glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p2View));
+        glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p2Proj));
+
+        p2->render();
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
         glm::mat4 nextP1View = p1->getViewMatrix(p1View, p2);
         glm::mat4 nextP2View = p2->getViewMatrix(p2View, p1);
         glm::mat4 nextP1Proj = p2->getObliqueProjection(proj, nextP1View);
@@ -241,17 +242,24 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
 
         recursivePortalHelper(gamedata, proj, nextP1View, nextP1Proj, nextP2View, nextP2Proj, maxDepth, depth + 1);
     }
+    else
+    {
+        glClear(GL_DEPTH_BUFFER_BIT);
+    }
 
     glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p1View));
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-
-    glStencilFunc(GL_EQUAL, depth+1, 0xff);
+    glStencilFunc(GL_LEQUAL, depth + 1, 0xff);
     p1->render();
-
+    
     glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p2View));
-    glStencilFunc(GL_EQUAL, (uint8_t)(-depth-1), 0xff);
+    glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    glStencilFunc(GL_GEQUAL, 0xff - depth, 0xff);
     p2->render();
+
+
 }
 
 void renderWorld(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj)

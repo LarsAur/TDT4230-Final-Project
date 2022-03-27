@@ -29,7 +29,7 @@ void init(gamedata_st &gamedata);
 void update(gamedata_st &gamedata);
 void render(gamedata_st &gamedata);
 void renderWorld(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj);
-void renderRecursivePortals(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj, int maxDepth, int depth);
+void renderRecursivePortals(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj, int maxDepth);
 void destroy(gamedata_st &gamedata);
 
 int main()
@@ -65,6 +65,7 @@ void init(gamedata_st &gamedata)
     gamedata.cube = new Cube(glm::vec3(1.0f, 1.0f, 1.0f), false);
     gamedata.chamber = new Cube(glm::vec3(50, 30, 30), true);
     gamedata.portalGun = new ObjMesh("../res/models/PortalGun.obj", 0.01f);
+    gamedata.player = new Cube(glm::vec3(1.0f, 4.0f, 1.0f), false);
 
     gamedata.portals[0] = new Portal(glm::vec2(5, 10));
     gamedata.portals[1] = new Portal(glm::vec2(5, 10));
@@ -74,6 +75,7 @@ void init(gamedata_st &gamedata)
     gamedata.portalGun->generateVertexData(*gamedata.shader);
     gamedata.portals[0]->generateVertexData(*gamedata.shader);
     gamedata.portals[1]->generateVertexData(*gamedata.shader);
+    gamedata.player->generateVertexData(*gamedata.shader);
 
     gamedata.root = new Node();
     gamedata.root->addChild(*gamedata.farCamera);
@@ -83,6 +85,7 @@ void init(gamedata_st &gamedata)
     gamedata.root->addChild(*gamedata.portalGun);
     gamedata.root->addChild(*gamedata.portals[0]);
     gamedata.root->addChild(*gamedata.portals[1]);
+    gamedata.farCamera->addChild(*gamedata.player);
 
     // Load all textures
     gamedata.portalGunAlbedo = new Texture("../res/textures/portalgun_col.png", LINEAR);
@@ -97,12 +100,13 @@ void init(gamedata_st &gamedata)
     gamedata.chamber->albedo = gamedata.wall;
     gamedata.portals[0]->albedo = gamedata.bluePortalTexture;
     gamedata.portals[1]->albedo = gamedata.orangeportalTexture;
+    gamedata.player->albedo = gamedata.rubix;
 
     gamedata.portalGun->setPosition(glm::vec3(0.007f, -0.005f, -0.01f));
     gamedata.portalGun->setRotation(glm::vec3(0, -0.3f, 0.1f));
 
     gamedata.portals[0]->translate(glm::vec3(-10, 0, 0));
-    gamedata.portals[0]->rotate(glm::vec3(0, M_PI / 2, 0));
+    gamedata.portals[0]->rotate(glm::vec3(0, M_PI / 2 - 0.1f, 0));
 
     gamedata.portals[1]->translate(glm::vec3(20, 0, 0));
     gamedata.portals[1]->rotate(glm::vec3(0, -M_PI / 2, 0));
@@ -120,6 +124,7 @@ void update(gamedata_st &gamedata)
 {
     double time = gamedata.window->getTime();
     gamedata.portalGun->setPosition(glm::vec3(0.007f, -0.005f + 0.0005f * sin(time / 10.0f), -0.01f));
+    //gamedata.portals[0]->rotate(glm::vec3(0.0f, 0.01f, 0.0f));
     gamedata.cube->rotate(glm::vec3(0, 0.01f, 0));
 
     gamedata.window->updateInput();
@@ -151,7 +156,7 @@ void render(gamedata_st &gamedata)
     glm::mat4 view = gamedata.farCamera->getViewMatrix();
     glm::mat4 proj = gamedata.farCamera->getPerspectiveMatrix();
 
-    renderRecursivePortals(gamedata, view, proj, 1, 0);
+    renderRecursivePortals(gamedata, view, proj, 4);
     
 
     /* glDisable(GL_DEPTH_TEST);
@@ -163,65 +168,19 @@ void render(gamedata_st &gamedata)
     gamedata.window->swapBuffers();
 }
 
-void renderRecursivePortals(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj, int maxDepth, int depth)
+void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1View, glm::mat4 p1Proj, glm::mat4 p2View, glm::mat4 p2Proj, int maxDepth, int depth);
+
+void renderRecursivePortals(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj, int maxDepth)
 {
     glClear(GL_STENCIL_BUFFER_BIT);
 
-    // Disable writing to the stencil buffer, when rendering the world
-    int uViewLoc = gamedata.shader->getUniformLocation("view");
-    int uProjLoc = gamedata.shader->getUniformLocation("proj");
-
-    glm::mat4 p1View = view;
-    glm::mat4 p2View = view;
-    glm::mat4 p1Proj = proj;
-    glm::mat4 p2Proj = proj;
-
-    Portal *p1 = gamedata.portals[0];
-    Portal *p2 = gamedata.portals[1];
 
     glEnable(GL_STENCIL_TEST);
     glStencilMask(0xff);
     
-    uint8_t i = 0;
-    for (i = 0; i < 4; i++)
-    {
-        glClear(GL_DEPTH_BUFFER_BIT);
-        
-        // Render the world inside portal 1
-        glStencilFunc(GL_EQUAL, i, 0xff);
-        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-        renderWorld(gamedata, p1View, p1Proj);
-        
-        // Render the world inside portal 2
-        glStencilFunc(GL_EQUAL, (uint8_t)(-i), 0xff);
-        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-        renderWorld(gamedata, p2View, p2Proj);
+    recursivePortalHelper(gamedata, proj, view, proj, view, proj, maxDepth, 0);
 
-        // Create stencil for portal 1
-        glStencilFunc(GL_EQUAL, i, 0xff);
-        glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
-
-        glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p1View));
-        glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p1Proj));
-        
-        p1->render();
-
-        // Create stencil for portal 2
-        glStencilFunc(GL_EQUAL, (uint8_t)(-i), 0xff);
-        glStencilOp(GL_KEEP, GL_KEEP, GL_DECR_WRAP);
-
-        glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p2View));
-        glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p2Proj));
-
-        p2->render();
-
-        p1Proj = p1->getObliqueProjection(proj, p1View);
-        p2Proj = p2->getObliqueProjection(proj, p2View);
-        p1View = p1->getViewMatrix(p1View, p2);
-        p2View = p2->getViewMatrix(p2View, p1);
-    }
-
-    glClear(GL_DEPTH_BUFFER_BIT);
+/*     glClear(GL_DEPTH_BUFFER_BIT);
     // Render the world inside the portal without rendering another portal
     glStencilFunc(GL_EQUAL, i+1, 0xff);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
@@ -229,9 +188,70 @@ void renderRecursivePortals(gamedata_st &gamedata, glm::mat4 view, glm::mat4 pro
     
     glStencilFunc(GL_EQUAL, (uint8_t)(-i-1), 0xff);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-    renderWorld(gamedata, p2View, p2Proj);
+    renderWorld(gamedata, p2View, p2Proj); */
     
     glDisable(GL_STENCIL_TEST);
+}
+
+void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1View, glm::mat4 p1Proj, glm::mat4 p2View, glm::mat4 p2Proj, int maxDepth, int depth)
+{
+    int uViewLoc = gamedata.shader->getUniformLocation("view");
+    int uProjLoc = gamedata.shader->getUniformLocation("proj");
+    Portal *p1 = gamedata.portals[0];
+    Portal *p2 = gamedata.portals[1];
+
+    glClear(GL_DEPTH_BUFFER_BIT);
+        
+    // Render the world inside portal 1
+    glStencilFunc(GL_EQUAL, depth, 0xff);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    renderWorld(gamedata, p1View, p1Proj);
+    
+    // Render the world inside portal 2
+    glStencilFunc(GL_EQUAL, (uint8_t)(-depth), 0xff);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    renderWorld(gamedata, p2View, p2Proj);
+
+    glDepthMask(0x00);
+    // Create stencil for portal 1
+    glStencilFunc(GL_EQUAL, depth, 0xff);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+
+    glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p1View));
+    glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p1Proj));
+    
+    p1->render();
+
+    // Create stencil for portal 2
+    glStencilFunc(GL_EQUAL, (uint8_t)(-depth), 0xff);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_DECR_WRAP);
+
+    glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p2View));
+    glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p2Proj));
+
+    p2->render();
+    glDepthMask(0xff);
+
+    if(depth < maxDepth)
+    {
+        glm::mat4 nextP1View = p1->getViewMatrix(p1View, p2);
+        glm::mat4 nextP2View = p2->getViewMatrix(p2View, p1);
+        glm::mat4 nextP1Proj = p2->getObliqueProjection(proj, nextP1View);
+        glm::mat4 nextP2Proj = p1->getObliqueProjection(proj, nextP2View);
+
+        recursivePortalHelper(gamedata, proj, nextP1View, nextP1Proj, nextP2View, nextP2Proj, maxDepth, depth + 1);
+    }
+
+    glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p1View));
+    glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+    glStencilFunc(GL_EQUAL, depth+1, 0xff);
+    p1->render();
+
+    glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p2View));
+    glStencilFunc(GL_EQUAL, (uint8_t)(-depth-1), 0xff);
+    p2->render();
 }
 
 void renderWorld(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj)
@@ -244,6 +264,7 @@ void renderWorld(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj)
 
     gamedata.cube->render();
     gamedata.chamber->render();
+    gamedata.player->render();
 }
 
 void destroy(gamedata_st &gamedata)

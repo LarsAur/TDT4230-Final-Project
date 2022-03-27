@@ -17,6 +17,7 @@ typedef struct gamedata_st
     Mesh *cube;
     Mesh *chamber;
     Mesh *portalGun;
+    Mesh *player;
     Portal *portals[2];
 
     Texture *portalGunAlbedo;

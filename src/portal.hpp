@@ -36,20 +36,17 @@ class Portal : public Circle
             float dist = glm::length(mPosition);
             glm::vec4 clipPlane = glm::inverse(glm::transpose(view)) * glm::vec4(getNormal(), dist);
             
-            //printf("Plane: (%f, %f, %f, %f)\n", clipPlane.x, clipPlane.y, clipPlane.z, clipPlane.w);
-            //printf("W: %f\n", clipPlane.w);
-
             if(clipPlane.w > 0.0f)
-            {
+            {  
                 return proj;
             }
-                //printf("Normal: (%f, %f, %f)\n", clipNormal.x, clipNormal.y, clipNormal.z);
 
+            float *ptr = glm::value_ptr(proj);
             glm::vec4 q = glm::vec4(
-                glm::sign(clipPlane.x),
-                glm::sign(clipPlane.y),
-                1.0f,
-                1.0f
+                (glm::sign(clipPlane.x) + ptr[8]) / ptr[0],
+                (glm::sign(clipPlane.y) + ptr[9]) / ptr[5],
+                -1.0f,
+                (1.0f + ptr[10]) / ptr[14]
             );
 
             glm::vec4 c = clipPlane * 2.0f / glm::dot(clipPlane, q);

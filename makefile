@@ -1,23 +1,25 @@
 # TODO: https://stackoverflow.com/questions/714100/os-detecting-makefile
 .PHONY: run build clean
 
-run:
-	cd ./build && make && PortalProject.exe
+CMAKE_ARGS = -B ./build -S .
+ifeq ($(OS), Windows_NT)
+	CMAKE_ARGS += -G "MinGW Makefiles"
+	EXECUTABLE = PortalProject.exe
+else
+	EXECUTABLE = ./PortalProject
+endif
 
-run-linux:
-	cd ./build && make && ./PortalProject
+run:
+	cd ./build && make && $(EXECUTABLE)
 
 debug:
-	cd ./build && make && gdb ./PortalProject.exe
+	cd ./build && make && gdb $(EXECUTABLE)
 
 build:
-	cmake -G "MinGW Makefiles" -B ./build -S .
+	cmake $(CMAKE_ARGS)
 
 buildDebug:
-	cmake -G "MinGW Makefiles" -B ./build -S . -DCMAKE_BUILD_TYPE=Debug
-
-build-linux:
-	cmake -B ./build -S .
+	cmake $(CMAKE_ARGS) -DCMAKE_BUILD_TYPE=Debug
 
 clean:
 	-del /q /s build\*

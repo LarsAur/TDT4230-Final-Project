@@ -63,7 +63,7 @@ void init(gamedata_st &gamedata)
     gamedata.nearCamera = new Camera(*gamedata.window, glm::vec3(0), glm::vec3(0), M_PI / 2, 0.001f, 1.0f);
 
     gamedata.cube = new Cube(glm::vec3(1.0f, 1.0f, 1.0f), false);
-    gamedata.chamber = new Cube(glm::vec3(30, 30, 30), true);
+    gamedata.chamber = new Cube(glm::vec3(50, 30, 30), true);
     gamedata.portalGun = new ObjMesh("../res/models/PortalGun.obj", 0.01f);
 
     gamedata.portals[0] = new Portal(glm::vec2(5, 10));
@@ -104,7 +104,7 @@ void init(gamedata_st &gamedata)
     gamedata.portals[0]->translate(glm::vec3(-10, 0, 0));
     gamedata.portals[0]->rotate(glm::vec3(0, M_PI / 2, 0));
 
-    gamedata.portals[1]->translate(glm::vec3(10, 0, 0));
+    gamedata.portals[1]->translate(glm::vec3(20, 0, 0));
     gamedata.portals[1]->rotate(glm::vec3(0, -M_PI / 2, 0));
 
     glEnable(GL_DEPTH_TEST);
@@ -152,6 +152,7 @@ void render(gamedata_st &gamedata)
     glm::mat4 proj = gamedata.farCamera->getPerspectiveMatrix();
 
     renderRecursivePortals(gamedata, view, proj, 1, 0);
+    
 
     /* glDisable(GL_DEPTH_TEST);
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(gamedata.nearCamera->getPerspectiveMatrix()));
@@ -179,65 +180,57 @@ void renderRecursivePortals(gamedata_st &gamedata, glm::mat4 view, glm::mat4 pro
     Portal *p2 = gamedata.portals[1];
 
     glEnable(GL_STENCIL_TEST);
+    glStencilMask(0xff);
+    
     uint8_t i = 0;
-    for (i = 0; i < 3; i++)
+    for (i = 0; i < 4; i++)
     {
-        glStencilMask(0xff);
-
+        glClear(GL_DEPTH_BUFFER_BIT);
+        
         // Render the world inside portal 1
         glStencilFunc(GL_EQUAL, i, 0xff);
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         renderWorld(gamedata, p1View, p1Proj);
-
+        
         // Render the world inside portal 2
         glStencilFunc(GL_EQUAL, (uint8_t)(-i), 0xff);
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         renderWorld(gamedata, p2View, p2Proj);
 
-        glDepthMask(GL_FALSE);
         // Create stencil for portal 1
         glStencilFunc(GL_EQUAL, i, 0xff);
-        glStencilOp(GL_ZERO, GL_ZERO, GL_INCR);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
 
         glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p1View));
         glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p1Proj));
-
+        
         p1->render();
 
         // Create stencil for portal 2
         glStencilFunc(GL_EQUAL, (uint8_t)(-i), 0xff);
-        glStencilOp(GL_ZERO, GL_ZERO, GL_DECR_WRAP);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_DECR_WRAP);
 
         glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p2View));
         glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p2Proj));
 
         p2->render();
 
-        glDepthMask(GL_TRUE); 
-
-        // Setup view and projection matrix for next iteration
-        glm::mat4 tmpView = p1View;
-        glm::mat4 tmpProj = p1Proj;
-
-        p1Proj = p1->getObliqueProjection(p1Proj, p2View);
-        p2Proj = p2->getObliqueProjection(p2Proj, p1View);
+        p1Proj = p1->getObliqueProjection(proj, p1View);
+        p2Proj = p2->getObliqueProjection(proj, p2View);
         p1View = p1->getViewMatrix(p1View, p2);
         p2View = p2->getViewMatrix(p2View, p1);
     }
 
-    glDepthMask(GL_FALSE);
-
+    glClear(GL_DEPTH_BUFFER_BIT);
     // Render the world inside the portal without rendering another portal
-    glStencilFunc(GL_EQUAL, i, 0xff);
+    glStencilFunc(GL_EQUAL, i+1, 0xff);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     renderWorld(gamedata, p1View, p1Proj);
-
-    glStencilFunc(GL_EQUAL, (uint8_t)(-i), 0xff);
+    
+    glStencilFunc(GL_EQUAL, (uint8_t)(-i-1), 0xff);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     renderWorld(gamedata, p2View, p2Proj);
     
-    glDepthMask(GL_TRUE); 
-
     glDisable(GL_STENCIL_TEST);
 }
 
@@ -250,7 +243,7 @@ void renderWorld(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj)
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
     gamedata.cube->render();
-    //gamedata.chamber->render();
+    gamedata.chamber->render();
 }
 
 void destroy(gamedata_st &gamedata)

@@ -151,20 +151,19 @@ void render(gamedata_st &gamedata)
         (gamedata.window->isKeyDown(GLFW_KEY_W) - gamedata.window->isKeyDown(GLFW_KEY_S)) / 5.0f));
 
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
     glm::mat4 view = gamedata.farCamera->getViewMatrix();
     glm::mat4 proj = gamedata.farCamera->getPerspectiveMatrix();
 
-    renderRecursivePortals(gamedata, view, proj, 2);
+    renderRecursivePortals(gamedata, view, proj, 10);
     
-
-    /* glDisable(GL_DEPTH_TEST);
+    glDisable(GL_DEPTH_TEST);
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(gamedata.nearCamera->getPerspectiveMatrix()));
     glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(glm::identity<glm::mat4>()));
     gamedata.portalGun->render();
- */
-    // Render all
+    glEnable(GL_DEPTH_TEST);
+
     gamedata.window->swapBuffers();
 }
 
@@ -173,10 +172,8 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
 
 void renderRecursivePortals(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj, int maxDepth)
 {
-    glClear(GL_STENCIL_BUFFER_BIT);
     glEnable(GL_STENCIL_TEST);
     glStencilMask(0xff);
-
 
     // Initialize the portal 2 stencil to HALF_BYTE
     int uViewLoc = gamedata.shader->getUniformLocation("view");

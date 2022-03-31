@@ -11,10 +11,13 @@
 #include <string>
 #include <iostream>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 static void framebufferSizeCallback(GLFWwindow *window, int width, int height)
 {
 	glViewport(0, 0, width, height);
 }
+#pragma GCC diagnostic pop
 
 static void errorCallback(int error, const char *description)
 {

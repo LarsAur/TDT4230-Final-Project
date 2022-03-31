@@ -33,8 +33,10 @@ class Portal : public Circle
         /* Source: http://www.terathon.com/lengyel/Lengyel-Oblique.pdf */
         glm::mat4 getObliqueProjection(glm::mat4 proj, glm::mat4 view)
         {
-            float dist = glm::length(mPosition);
-            glm::vec4 clipPlane = glm::inverse(glm::transpose(view)) * glm::vec4(getNormal(), dist);
+            glm::vec3 normal = getNormal();
+            float d = -glm::dot(normal, mPosition);
+            glm::vec4 clipPlane = glm::inverse(glm::transpose(view)) * glm::vec4(normal, d);
+
             
             if(clipPlane.w > 0.0f)
             {  

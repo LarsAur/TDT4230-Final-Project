@@ -26,10 +26,20 @@ class Node
         {
             mPosition = position;
         }
+
+        glm::vec3 getPosition()
+        {
+            return mPosition;
+        }
         
         void setRotation(glm::vec3 rotation)
         {
             mRotation = rotation;
+        }
+
+        glm::vec3 getRotation()
+        {
+            return mRotation;
         }
 
         void rotate(glm::vec3 rotation)

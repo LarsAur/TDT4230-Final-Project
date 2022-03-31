@@ -59,13 +59,13 @@ void init(gamedata_st &gamedata)
     gamedata.shader->link();
     gamedata.shader->activate();
 
-    gamedata.farCamera = new Camera(*gamedata.window, glm::vec3(0), glm::vec3(0), M_PI / 2, 0.1f, 200.0f);
+    gamedata.farCamera = new Camera(*gamedata.window, glm::vec3(0), glm::vec3(0), M_PI / 2, 0.001f, 200.0f);
     gamedata.nearCamera = new Camera(*gamedata.window, glm::vec3(0), glm::vec3(0), M_PI / 2, 0.001f, 1.0f);
 
     gamedata.cube = new Cube(glm::vec3(1.0f, 1.0f, 1.0f), false);
     gamedata.chamber = new Cube(glm::vec3(50, 30, 30), true);
     gamedata.portalGun = new ObjMesh("../res/models/PortalGun.obj", 0.01f);
-    gamedata.player = new Cube(glm::vec3(1.0f, 4.0f, 1.0f), false);
+    gamedata.player = new Cube(glm::vec3(1.0f, 1.0f, 1.0f), false);
 
     gamedata.portals[0] = new Portal(glm::vec2(5, 10));
     gamedata.portals[1] = new Portal(glm::vec2(5, 10));
@@ -105,10 +105,10 @@ void init(gamedata_st &gamedata)
     gamedata.portalGun->setPosition(glm::vec3(0.007f, -0.005f, -0.01f));
     gamedata.portalGun->setRotation(glm::vec3(0, -0.3f, 0.1f));
 
-    gamedata.portals[0]->translate(glm::vec3(-10, 0, 0));
-    gamedata.portals[0]->rotate(glm::vec3(0, M_PI / 2 - 0.1f, 0));
+    gamedata.portals[0]->translate(glm::vec3(-10, 0, 5));
+    gamedata.portals[0]->rotate(glm::vec3(0, M_PI / 2, 0));
 
-    gamedata.portals[1]->translate(glm::vec3(20, 0, 0));
+    gamedata.portals[1]->translate(glm::vec3(10, 0, -5));
     gamedata.portals[1]->rotate(glm::vec3(0, -M_PI / 2, 0));
 
     glEnable(GL_DEPTH_TEST);
@@ -124,10 +124,88 @@ void update(gamedata_st &gamedata)
 {
     double time = gamedata.window->getTime();
     gamedata.portalGun->setPosition(glm::vec3(0.007f, -0.005f + 0.0005f * sin(time / 10.0f), -0.01f));
-    //gamedata.portals[0]->rotate(glm::vec3(0.0f, 0.01f, 0.0f));
     gamedata.cube->rotate(glm::vec3(0, 0.01f, 0));
 
     gamedata.window->updateInput();
+
+    gamedata.farCamera->rotateClamp(glm::vec3(
+        -gamedata.window->getMouseDelta().y / 500,
+        -gamedata.window->getMouseDelta().x / 500,
+        0.0f));
+
+    glm::vec3 camTranslation = gamedata.farCamera->getFirstPersonTranslation(glm::vec3(
+        (gamedata.window->isKeyDown(GLFW_KEY_D) - gamedata.window->isKeyDown(GLFW_KEY_A)) / 5.0f,
+        (gamedata.window->isKeyDown(GLFW_KEY_SPACE) - gamedata.window->isKeyDown(GLFW_KEY_LEFT_SHIFT)) / 5.0f,
+        (gamedata.window->isKeyDown(GLFW_KEY_W) - gamedata.window->isKeyDown(GLFW_KEY_S)) / 5.0f)
+    );
+
+    // TODO: Only move the rest of the way out of the portal after going through
+    gamedata.farCamera->translate(camTranslation);
+
+    float normalDotDir = glm::dot(gamedata.portals[0]->getNormal(), camTranslation);
+    if(normalDotDir < 0) // Use less than 0 because we only want to enter the portal from the front
+    {
+        float t1 = glm::dot(gamedata.portals[0]->getNormal(), gamedata.farCamera->getPosition() - gamedata.portals[0]->getPosition()) / -normalDotDir;
+        if(t1 < 1 && t1 > 0)
+        {
+            glm::mat3 rotation = glm::mat3(gamedata.portals[0]->getTransformMatrix());
+            
+            glm::vec3 u = rotation * glm::vec3(0, 1, 0);
+            glm::vec3 v = rotation * glm::vec3(1, 0, 0);
+            glm::vec3 zero = rotation * glm::vec3(0, 0, 1);
+
+            // Find the linear combination coefficients of the vectors u and v in the portal plane.
+            // a * u + b * v = camTransform * t1
+            glm::mat3 inv = glm::inverse(glm::mat3(u, v, zero));
+            //std::cout << glm::to_string(gamedata.farCamera->getPosition() + camTranslation * t1) << std::endl;
+            glm::vec3 ab = inv * (gamedata.farCamera->getPosition() + camTranslation * t1 - gamedata.portals[0]->getPosition());
+
+            // Check if a and b are within the oval of the portal 
+            if(pow(ab[0] / 10,  2) + pow(ab[1] / 5, 2) <= 1)
+            {
+                glm::vec3 deltaPos = gamedata.portals[0]->getPosition() - (gamedata.farCamera->getPosition() + camTranslation * t1);
+                glm::vec3 deltaRot = gamedata.portals[1]->getRotation() - gamedata.portals[0]->getRotation();
+
+                deltaPos.y = -deltaPos.y;
+
+                gamedata.farCamera->setPosition(gamedata.portals[1]->getPosition() + (deltaPos * glm::inverse(rotation) * glm::mat3(gamedata.portals[1]->getTransformMatrix())));
+                gamedata.farCamera->rotate(deltaRot);
+                gamedata.farCamera->rotate(u * glm::radians(180.0f));
+            }
+        }
+    }
+
+    normalDotDir = glm::dot(gamedata.portals[1]->getNormal(), camTranslation);
+    if(normalDotDir < 0) // Use less than 0 because we only want to enter the portal from the front
+    {
+        float t1 = glm::dot(gamedata.portals[1]->getNormal(), gamedata.farCamera->getPosition() - gamedata.portals[1]->getPosition()) / -normalDotDir;
+        if(t1 < 1 && t1 > 0)
+        {
+            glm::mat3 rotation = glm::mat3(gamedata.portals[1]->getTransformMatrix());
+            glm::vec3 u = rotation * glm::vec3(0, 1, 0);
+            glm::vec3 v = rotation * glm::vec3(1, 0, 0);
+            glm::vec3 zero = rotation * glm::vec3(0, 0, 1);
+
+            // Find the linear combination coefficients of the vectors u and v in the portal plane.
+            // a * u + b * v = camTransform * t1
+            glm::mat3 inv = glm::inverse(glm::mat3(u, v, zero));
+            std::cout << glm::to_string(gamedata.farCamera->getPosition() + camTranslation * t1) << std::endl;
+            glm::vec3 ab = inv * (gamedata.farCamera->getPosition() + camTranslation * t1 - gamedata.portals[1]->getPosition());
+
+            // Check if a and b are within the oval of the portal 
+            if(pow(ab[0] / 10,  2) + pow(ab[1] / 5, 2) <= 1)
+            {
+                glm::vec3 deltaPos = gamedata.portals[1]->getPosition() - (gamedata.farCamera->getPosition() + camTranslation * t1);
+                glm::vec3 deltaRot = gamedata.portals[0]->getRotation() - gamedata.portals[1]->getRotation();
+
+                deltaPos.y = -deltaPos.y;
+
+                gamedata.farCamera->setPosition(gamedata.portals[0]->getPosition() + (deltaPos * glm::inverse(rotation) * glm::mat3(gamedata.portals[0]->getTransformMatrix())));
+                gamedata.farCamera->rotate(deltaRot);
+                gamedata.farCamera->rotate(u * glm::radians(180.0f));
+            }
+        }
+    }
 
     if (gamedata.window->isKeyDown(GLFW_KEY_ESCAPE))
         gamedata.window->close();
@@ -140,16 +218,6 @@ void render(gamedata_st &gamedata)
     int uViewLoc = gamedata.shader->getUniformLocation("view");
     int uProjLoc = gamedata.shader->getUniformLocation("proj");
 
-    gamedata.farCamera->rotateClamp(glm::vec3(
-        -gamedata.window->getMouseDelta().y / 500,
-        -gamedata.window->getMouseDelta().x / 500,
-        0.0f));
-
-    gamedata.farCamera->cameraTranslate(glm::vec3(
-        (gamedata.window->isKeyDown(GLFW_KEY_D) - gamedata.window->isKeyDown(GLFW_KEY_A)) / 5.0f,
-        (gamedata.window->isKeyDown(GLFW_KEY_SPACE) - gamedata.window->isKeyDown(GLFW_KEY_LEFT_SHIFT)) / 5.0f,
-        (gamedata.window->isKeyDown(GLFW_KEY_W) - gamedata.window->isKeyDown(GLFW_KEY_S)) / 5.0f));
-
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -157,17 +225,16 @@ void render(gamedata_st &gamedata)
     glm::mat4 proj = gamedata.farCamera->getPerspectiveMatrix();
 
     renderRecursivePortals(gamedata, view, proj, 10);
-    
-    glDisable(GL_DEPTH_TEST);
+
+/*     glDisable(GL_DEPTH_TEST);
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(gamedata.nearCamera->getPerspectiveMatrix()));
     glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(glm::identity<glm::mat4>()));
     gamedata.portalGun->render();
     glEnable(GL_DEPTH_TEST);
-
+ */
     gamedata.window->swapBuffers();
 }
 
-#define HALF_BYTE 0xf0
 void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1View, glm::mat4 p1Proj, glm::mat4 p2View, glm::mat4 p2Proj, int maxDepth, int depth);
 
 void renderRecursivePortals(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj, int maxDepth)
@@ -175,17 +242,8 @@ void renderRecursivePortals(gamedata_st &gamedata, glm::mat4 view, glm::mat4 pro
     glEnable(GL_STENCIL_TEST);
     glStencilMask(0xff);
 
-    // Initialize the portal 2 stencil to HALF_BYTE
-    int uViewLoc = gamedata.shader->getUniformLocation("view");
-    int uProjLoc = gamedata.shader->getUniformLocation("proj");
-    glStencilFunc(GL_EQUAL, HALF_BYTE, 0xff);
-    glStencilOp(GL_REPLACE, GL_KEEP, GL_KEEP);
-    glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
-    gamedata.portals[1]->render();
-    
     recursivePortalHelper(gamedata, proj, view, proj, view, proj, maxDepth, 0);
-    
+
     glDisable(GL_STENCIL_TEST);
 }
 
@@ -200,14 +258,17 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
     glStencilFunc(GL_EQUAL, depth, 0xff);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     renderWorld(gamedata, p1View, p1Proj);
-    
-    // Render the world inside portal 2
-    glStencilFunc(GL_EQUAL, HALF_BYTE + depth, 0xff);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-    renderWorld(gamedata, p2View, p2Proj);
 
-    if(depth < maxDepth)
-    {   
+    if(depth > 0)
+    {
+        // Render the world inside portal 2
+        glStencilFunc(GL_EQUAL, (uint8_t)-depth, 0xff);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+        renderWorld(gamedata, p2View, p2Proj);
+    }
+
+    if (depth < maxDepth)
+    {
         // We have to disable the color mask here when drawing the stencils.
         // This is due to the portal not rendering correcly because the oblique projection matrix
         // does not create a consitant depth value
@@ -220,12 +281,12 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
 
         glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p1View));
         glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p1Proj));
-        
+
         p1->render();
 
         // Create stencil for portal 2
-        glStencilFunc(GL_EQUAL, HALF_BYTE + depth, 0xff);
-        glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+        glStencilFunc(GL_EQUAL, (uint8_t)-depth, 0xff);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_DECR_WRAP);
 
         glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p2View));
         glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p2Proj));
@@ -248,14 +309,14 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
     // Draw the portals on the way back out
     glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p1View));
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
-    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-    glStencilFunc(GL_LEQUAL, depth + 1, 0xff);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_DECR);
+    glStencilFunc(GL_EQUAL, depth + 1, 0xff);
     p1->render();
 
     glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p2View));
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
-    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-    glStencilFunc(GL_LEQUAL, HALF_BYTE + depth + 1, 0xff);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_INCR_WRAP);
+    glStencilFunc(GL_EQUAL, (uint8_t)(-depth - 1), 0xff);
     p2->render();
 }
 

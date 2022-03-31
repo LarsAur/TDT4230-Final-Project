@@ -65,6 +65,18 @@ public:
                     translation[2] * forwardVector;
     }
 
+    // Returns a vector in world space based upon the translation given as (right, up, forward)
+    glm::vec3 getFirstPersonTranslation(glm::vec3 translation)
+    {
+        glm::vec3 upVector = glm::vec3(0, 1, 0);
+        glm::vec3 forwardVector = get2DLookingVector();
+        glm::vec3 rightVector = glm::cross(forwardVector, upVector);
+
+        return translation[0] * rightVector + 
+               translation[1] * upVector +
+               translation[2] * forwardVector;
+    }
+
     void rotateClamp(glm::vec3 rotation)
     {
         mRotation += rotation;

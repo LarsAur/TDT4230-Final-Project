@@ -126,7 +126,6 @@ public:
             {
                 std::string type;
                 unsigned int vi1, vi2, vi3, ti1, ti2, ti3, ni1, ni2, ni3;
-                // TODO: Enable the use of multiple formats other than v/vt
                 std::ptrdiff_t separators = std::count(line.begin(), line.end(), '/');
                 std::replace(line.begin(), line.end(), '/', ' ');
                 std::istringstream iss(line);
@@ -134,7 +133,7 @@ public:
                 if (separators == 6)
                 {
                     // TODO: This could also include the version without UVs
-                    iss >> type >> vi1 >> ti1 >> ni1 >> vi2 >> ti2 >> ni2 >> vi3 >> ti3 >> ni1;
+                    iss >> type >> vi1 >> ti1 >> ni1 >> vi2 >> ti2 >> ni2 >> vi3 >> ti3 >> ni3;
                     normIdx.push_back(ni1);
                     normIdx.push_back(ni2);
                     normIdx.push_back(ni3);
@@ -177,21 +176,29 @@ public:
 
 class Circle : public Mesh
 {
+private:
+    glm::vec2 mDimensions;
+
 public:
     Circle(glm::vec2 dimensions, int triangles)
     {
+        mDimensions = dimensions;
+
         for (int i = 0; i <= triangles; i++)
         {
             vertices.push_back(glm::vec3(
-                dimensions.x * cos(i * M_PI * 2 /  triangles) / 2,
-                dimensions.y * sin(i * M_PI * 2 /  triangles) / 2,
-                0
-            ));
+                dimensions.x * cos(i * M_PI * 2 / triangles) / 2,
+                dimensions.y * sin(i * M_PI * 2 / triangles) / 2,
+                0));
+
+            normals.push_back(glm::vec3(
+                0,
+                0,
+                1));
 
             textureCoordinates.push_back(glm::vec2(
-                (cos(i * M_PI * 2 /  triangles) + 1) / 2,
-                (sin(i * M_PI * 2 /  triangles) + 1) / 2
-            ));
+                (cos(i * M_PI * 2 / triangles) + 1) / 2,
+                (sin(i * M_PI * 2 / triangles) + 1) / 2));
 
             indices.push_back(i);
         }
@@ -209,6 +216,11 @@ public:
         }
 
         glDrawElements(GL_TRIANGLE_FAN, indices.size(), GL_UNSIGNED_INT, nullptr);
+    }
+    
+    glm::vec2 getDimensions()
+    {
+        return mDimensions;
     }
 };
 
@@ -258,10 +270,10 @@ private:
     };
 
     glm::vec3 norms[6] = {
-        glm::vec3(0, -1, 0),
         glm::vec3(0, 1, 0),
-        glm::vec3(1, 0, 0),
+        glm::vec3(0, -1, 0),
         glm::vec3(-1, 0, 0),
+        glm::vec3(1, 0, 0),
         glm::vec3(0, 0, 1),
         glm::vec3(0, 0, -1)};
 
@@ -310,7 +322,7 @@ public:
             for (int i = 0; i < 6; i++)
             {
                 vertices.push_back(verts[idx[offset + i]]);
-                normals.push_back(norms[face]);
+                normals.push_back(inside ? norms[face] : -norms[face]);
                 indices.push_back(offset + i);
             }
 

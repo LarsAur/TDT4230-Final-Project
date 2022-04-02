@@ -10,10 +10,12 @@ uniform mat4 model;
 
 out vec2 fragTextureCoordinate;
 out vec3 fragNormal;
+out vec3 fragWorldPos;
 
 void main()
 {
-    fragNormal = normal;
+    fragNormal = mat3(model) * normal;
+    fragWorldPos = (model * vec4(position, 1.0)).xyz;
     fragTextureCoordinate = textureCoordinate;
     gl_Position = proj * view * model * vec4(position, 1.0);
 }

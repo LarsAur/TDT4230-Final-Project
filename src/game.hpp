@@ -7,7 +7,9 @@
 #include <node.hpp>
 #include <texture.hpp>
 #include <portal.hpp>
+#include <light.hpp>
 
+#define N_LIGHTS 1
 typedef struct gamedata_st 
 {
     Window *window;
@@ -31,6 +33,8 @@ typedef struct gamedata_st
     Camera *farCamera;
 
     Shader *shader;
+
+    Light *lights[N_LIGHTS];
 
     int timestep;
 } gamedata_st;

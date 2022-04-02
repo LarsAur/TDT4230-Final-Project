@@ -20,6 +20,7 @@
 #include <texture.hpp>
 #include <portal.hpp>
 #include <game.hpp>
+#include <light.hpp>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -54,8 +55,8 @@ void init(gamedata_st &gamedata)
 
     // Load the shader
     gamedata.shader = new Shader();
-    gamedata.shader->attach("../shaders/test.vert");
-    gamedata.shader->attach("../shaders/test.frag");
+    gamedata.shader->attach("../shaders/shader.vert");
+    gamedata.shader->attach("../shaders/shader.frag");
     gamedata.shader->link();
     gamedata.shader->activate();
 
@@ -64,9 +65,8 @@ void init(gamedata_st &gamedata)
 
     gamedata.cube = new Cube(glm::vec3(1.0f, 1.0f, 1.0f), false);
     gamedata.chamber = new Cube(glm::vec3(50, 30, 30), true);
-    gamedata.portalGun = new ObjMesh("../res/models/PortalGun.obj", 0.01f);
+    gamedata.portalGun = new ObjMesh("../res/models/PortalGunNormals.obj", 0.01f);
     gamedata.player = new Cube(glm::vec3(1.0f, 1.0f, 1.0f), false);
-
     gamedata.portals[0] = new Portal(glm::vec2(5, 10));
     gamedata.portals[1] = new Portal(glm::vec2(5, 10));
 
@@ -86,6 +86,11 @@ void init(gamedata_st &gamedata)
     gamedata.root->addChild(*gamedata.portals[0]);
     gamedata.root->addChild(*gamedata.portals[1]);
     gamedata.farCamera->addChild(*gamedata.player);
+
+    // Add lights
+    gamedata.lights[0] = new Light(glm::vec3(0,5,0), glm::vec3(0.9, 0.9, 1.0));
+
+    gamedata.lights[0]->updateUniform(*gamedata.shader);
 
     // Load all textures
     gamedata.portalGunAlbedo = new Texture("../res/textures/portalgun_col.png", LINEAR);
@@ -142,6 +147,7 @@ void update(gamedata_st &gamedata)
     // TODO: Only move the rest of the way out of the portal after going through
     gamedata.farCamera->translate(camTranslation);
 
+    // TODO: Simplify to function
     float normalDotDir = glm::dot(gamedata.portals[0]->getNormal(), camTranslation);
     if(normalDotDir < 0) // Use less than 0 because we only want to enter the portal from the front
     {
@@ -154,14 +160,14 @@ void update(gamedata_st &gamedata)
             glm::vec3 v = rotation * glm::vec3(1, 0, 0);
             glm::vec3 zero = rotation * glm::vec3(0, 0, 1);
 
-            // Find the linear combination coefficients of the vectors u and v in the portal plane.
+            // Find the linear combination coefficients (a,b) of the vectors u and v in the portal plane.
             // a * u + b * v = camTransform * t1
             glm::mat3 inv = glm::inverse(glm::mat3(u, v, zero));
             //std::cout << glm::to_string(gamedata.farCamera->getPosition() + camTranslation * t1) << std::endl;
             glm::vec3 ab = inv * (gamedata.farCamera->getPosition() + camTranslation * t1 - gamedata.portals[0]->getPosition());
 
             // Check if a and b are within the oval of the portal 
-            if(pow(ab[0] / 10,  2) + pow(ab[1] / 5, 2) <= 1)
+            if(pow(ab[0] / gamedata.portals[0]->getDimensions().y,  2) + pow(ab[1] / gamedata.portals[0]->getDimensions().x, 2) <= 1)
             {
                 glm::vec3 deltaPos = gamedata.portals[0]->getPosition() - (gamedata.farCamera->getPosition() + camTranslation * t1);
                 glm::vec3 deltaRot = gamedata.portals[1]->getRotation() - gamedata.portals[0]->getRotation();
@@ -189,11 +195,10 @@ void update(gamedata_st &gamedata)
             // Find the linear combination coefficients of the vectors u and v in the portal plane.
             // a * u + b * v = camTransform * t1
             glm::mat3 inv = glm::inverse(glm::mat3(u, v, zero));
-            std::cout << glm::to_string(gamedata.farCamera->getPosition() + camTranslation * t1) << std::endl;
             glm::vec3 ab = inv * (gamedata.farCamera->getPosition() + camTranslation * t1 - gamedata.portals[1]->getPosition());
 
             // Check if a and b are within the oval of the portal 
-            if(pow(ab[0] / 10,  2) + pow(ab[1] / 5, 2) <= 1)
+            if(pow(ab[0] / gamedata.portals[1]->getDimensions().y,  2) + pow(ab[1] / gamedata.portals[1]->getDimensions().x, 2) <= 1)
             {
                 glm::vec3 deltaPos = gamedata.portals[1]->getPosition() - (gamedata.farCamera->getPosition() + camTranslation * t1);
                 glm::vec3 deltaRot = gamedata.portals[0]->getRotation() - gamedata.portals[1]->getRotation();
@@ -282,7 +287,7 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
         glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p1View));
         glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p1Proj));
 
-        p1->render();
+        p1->render(*gamedata.shader);
 
         // Create stencil for portal 2
         glStencilFunc(GL_EQUAL, (uint8_t)-depth, 0xff);
@@ -291,7 +296,7 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
         glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p2View));
         glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p2Proj));
 
-        p2->render();
+        p2->render(*gamedata.shader);
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
         glm::mat4 nextP1View = p1->getViewMatrix(p1View, p2);
@@ -311,17 +316,22 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
     glStencilOp(GL_KEEP, GL_KEEP, GL_DECR);
     glStencilFunc(GL_EQUAL, depth + 1, 0xff);
-    p1->render();
+    p1->render(*gamedata.shader);
 
     glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p2View));
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
     glStencilOp(GL_KEEP, GL_KEEP, GL_INCR_WRAP);
     glStencilFunc(GL_EQUAL, (uint8_t)(-depth - 1), 0xff);
-    p2->render();
+    p2->render(*gamedata.shader);
 }
 
 void renderWorld(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj)
 {
+    // Get the camera position and send it to the shader
+    int uCameraLoc = gamedata.shader->getUniformLocation("u_camera_position");
+    glm::vec3 camPosition = glm::vec3(glm::column(glm::inverse(view), 3));
+    glUniform3fv(uCameraLoc, 1, glm::value_ptr(camPosition));
+
     int uViewLoc = gamedata.shader->getUniformLocation("view");
     int uProjLoc = gamedata.shader->getUniformLocation("proj");
 

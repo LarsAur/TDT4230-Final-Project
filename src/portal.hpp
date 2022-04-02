@@ -11,15 +11,21 @@
 
 class Portal : public Circle
 {
+private:
+    glm::vec3 mColor;
+
 public:
-    Portal(glm::vec2 dimensions) : Circle(dimensions, 100)
+    Portal(glm::vec2 dimensions, glm::vec3 color) : Circle(dimensions, 100)
     {
+        mColor = color;
     }
 
     void render(Shader &shader)
     {
         int uIsPortalLoc = shader.getUniformLocation("u_is_portal");
+        int uPortalColorLoc = shader.getUniformLocation("u_portal_color");
         glUniform1i(uIsPortalLoc, 1);
+        glUniform3fv(uPortalColorLoc, 1, glm::value_ptr(mColor));
         Circle::render();
         glUniform1i(uIsPortalLoc, 0);
     }

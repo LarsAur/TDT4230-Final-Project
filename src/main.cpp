@@ -67,8 +67,8 @@ void init(gamedata_st &gamedata)
     gamedata.chamber = new Cube(glm::vec3(50, 30, 30), true);
     gamedata.portalGun = new ObjMesh("../res/models/PortalGunNormals.obj", 0.01f);
     gamedata.player = new Cube(glm::vec3(1.0f, 1.0f, 1.0f), false);
-    gamedata.portals[0] = new Portal(glm::vec2(5, 10));
-    gamedata.portals[1] = new Portal(glm::vec2(5, 10));
+    gamedata.portals[0] = new Portal(glm::vec2(5, 10), glm::vec3(0.36f, 0.58f, 1.0f));
+    gamedata.portals[1] = new Portal(glm::vec2(5, 10), glm::vec3(1.0f, 0.5f, 0.05f));
 
     gamedata.chamber->generateVertexData(*gamedata.shader);
     gamedata.cube->generateVertexData(*gamedata.shader);
@@ -95,16 +95,12 @@ void init(gamedata_st &gamedata)
     // Load all textures
     gamedata.portalGunAlbedo = new Texture("../res/textures/portalgun_col.png", LINEAR);
     gamedata.wall = new Texture("../res/textures/wall.png", LINEAR);
-    gamedata.bluePortalTexture = new Texture("../res/textures/blue_portal.png", NEAREST);
-    gamedata.orangeportalTexture = new Texture("../res/textures/orange_portal.png", NEAREST);
     gamedata.rubix = new Texture("../res/textures/rubix.png", NEAREST);
 
     // Assign all initial textures
     gamedata.portalGun->albedo = gamedata.portalGunAlbedo;
     gamedata.cube->albedo = gamedata.rubix;
     gamedata.chamber->albedo = gamedata.wall;
-    gamedata.portals[0]->albedo = gamedata.bluePortalTexture;
-    gamedata.portals[1]->albedo = gamedata.orangeportalTexture;
     gamedata.player->albedo = gamedata.rubix;
 
     gamedata.portalGun->setPosition(glm::vec3(0.007f, -0.005f, -0.01f));

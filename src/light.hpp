@@ -30,10 +30,10 @@ class Light : protected Node
 
     void updateUniform(Shader &shader)
     {
-        int uPositionLoc = shader.getUniformLocation("u_light_positions") + 2 * mID;
+        int uPositionLoc = shader.getUniformLocation("u_light_positions") + mID;
         glUniform3fv(uPositionLoc, 1, glm::value_ptr(mPosition));
 
-        int uColorLoc = shader.getUniformLocation("u_light_colors") + 2 * mID;
+        int uColorLoc = shader.getUniformLocation("u_light_colors") + mID;
         glUniform3fv(uColorLoc, 1, glm::value_ptr(mColor));
     }
 };

@@ -217,7 +217,7 @@ public:
 
         glDrawElements(GL_TRIANGLE_FAN, indices.size(), GL_UNSIGNED_INT, nullptr);
     }
-    
+
     glm::vec2 getDimensions()
     {
         return mDimensions;

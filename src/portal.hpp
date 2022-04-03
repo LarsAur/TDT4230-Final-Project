@@ -20,10 +20,10 @@ public:
         mColor = color;
     }
 
-    void render(Shader &shader)
+    void render()
     {
-        int uIsPortalLoc = shader.getUniformLocation("u_is_portal");
-        int uPortalColorLoc = shader.getUniformLocation("u_portal_color");
+        int uIsPortalLoc = mShader->getUniformLocation("u_is_portal");
+        int uPortalColorLoc = mShader->getUniformLocation("u_portal_color");
         glUniform1i(uIsPortalLoc, 1);
         glUniform3fv(uPortalColorLoc, 1, glm::value_ptr(mColor));
         Circle::render();

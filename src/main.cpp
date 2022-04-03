@@ -12,6 +12,7 @@
 #include <glm/gtx/string_cast.hpp>
 #include <iostream>
 
+#include <game.hpp>
 #include <shader.hpp>
 #include <window.hpp>
 #include <camera.hpp>
@@ -19,12 +20,7 @@
 #include <node.hpp>
 #include <texture.hpp>
 #include <portal.hpp>
-#include <game.hpp>
 #include <light.hpp>
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 void init(gamedata_st &gamedata);
 void update(gamedata_st &gamedata);
@@ -64,7 +60,7 @@ void init(gamedata_st &gamedata)
     gamedata.nearCamera = new Camera(*gamedata.window, glm::vec3(0), glm::vec3(0), M_PI / 2, 0.001f, 1.0f);
 
     gamedata.cube = new Cube(glm::vec3(1.0f, 1.0f, 1.0f), false);
-    gamedata.chamber = new Cube(glm::vec3(50, 30, 30), true);
+    gamedata.chamber = new Cube(glm::vec3(30, 30, 30), true);
     gamedata.portalGun = new ObjMesh("../res/models/PortalGunNormals.obj", 0.01f);
     gamedata.player = new Cube(glm::vec3(1.0f, 1.0f, 1.0f), false);
     gamedata.portals[0] = new Portal(glm::vec2(5, 10), glm::vec3(0.36f, 0.58f, 1.0f));
@@ -89,13 +85,19 @@ void init(gamedata_st &gamedata)
 
     // Add lights
     gamedata.lights[0] = new Light(glm::vec3(0,5,0), glm::vec3(0.9, 0.9, 1.0));
+    gamedata.lights[1] = new Light(glm::vec3(10,5,0), glm::vec3(0.9, 0.9, 1.0));
+    gamedata.lights[2] = new Light(glm::vec3(-10,5,0), glm::vec3(0.9, 0.9, 1.0));
 
     gamedata.lights[0]->updateUniform(*gamedata.shader);
+    gamedata.lights[1]->updateUniform(*gamedata.shader);
+    gamedata.lights[2]->updateUniform(*gamedata.shader);
 
     // Load all textures
     gamedata.portalGunAlbedo = new Texture("../res/textures/portalgun_col.png", LINEAR);
     gamedata.wall = new Texture("../res/textures/wall.png", LINEAR);
     gamedata.rubix = new Texture("../res/textures/rubix.png", NEAREST);
+    gamedata.noise = new Texture(255, 255, 8, 100, 23456);
+    gamedata.noise->bind(NOISE_TEXTURE_BINDING);
 
     // Assign all initial textures
     gamedata.portalGun->albedo = gamedata.portalGunAlbedo;
@@ -214,10 +216,12 @@ void update(gamedata_st &gamedata)
 
 void render(gamedata_st &gamedata)
 {
+    int uTimeLoc = gamedata.shader->getUniformLocation("u_time");
+    glUniform1f(uTimeLoc, (float) gamedata.window->getTime());
     gamedata.root->updateTransforms();
 
-    int uViewLoc = gamedata.shader->getUniformLocation("view");
-    int uProjLoc = gamedata.shader->getUniformLocation("proj");
+    //int uViewLoc = gamedata.shader->getUniformLocation("view");
+    //int uProjLoc = gamedata.shader->getUniformLocation("proj");
 
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -283,7 +287,7 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
         glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p1View));
         glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p1Proj));
 
-        p1->render(*gamedata.shader);
+        p1->render();
 
         // Create stencil for portal 2
         glStencilFunc(GL_EQUAL, (uint8_t)-depth, 0xff);
@@ -292,7 +296,7 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
         glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p2View));
         glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p2Proj));
 
-        p2->render(*gamedata.shader);
+        p2->render();
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
         glm::mat4 nextP1View = p1->getViewMatrix(p1View, p2);
@@ -312,13 +316,13 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
     glStencilOp(GL_KEEP, GL_KEEP, GL_DECR);
     glStencilFunc(GL_EQUAL, depth + 1, 0xff);
-    p1->render(*gamedata.shader);
+    p1->render();
 
     glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(p2View));
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
     glStencilOp(GL_KEEP, GL_KEEP, GL_INCR_WRAP);
     glStencilFunc(GL_EQUAL, (uint8_t)(-depth - 1), 0xff);
-    p2->render(*gamedata.shader);
+    p2->render();
 }
 
 void renderWorld(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj)

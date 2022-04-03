@@ -9,7 +9,11 @@
 #include <portal.hpp>
 #include <light.hpp>
 
-#define N_LIGHTS 1
+#define N_LIGHTS 3
+
+#define ALBEDO_TEXTURE_BINDING 0
+#define NOISE_TEXTURE_BINDING 1
+
 typedef struct gamedata_st 
 {
     Window *window;
@@ -24,10 +28,8 @@ typedef struct gamedata_st
 
     Texture *portalGunAlbedo;
     Texture *wall;
-    Texture *bluePortalTexture;
-    Texture *orangeportalTexture;
     Texture *rubix;
-    Texture *portalStencil;
+    Texture *noise;
 
     Camera *nearCamera;
     Camera *farCamera;
@@ -35,6 +37,4 @@ typedef struct gamedata_st
     Shader *shader;
 
     Light *lights[N_LIGHTS];
-
-    int timestep;
 } gamedata_st;

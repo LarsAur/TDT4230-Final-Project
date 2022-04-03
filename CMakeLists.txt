@@ -4,7 +4,7 @@ project(PortalProject)
 #
 # CMake setup
 #
-set (CMAKE_CXX_STANDARD 14)
+set (CMAKE_CXX_STANDARD 17)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set (CMAKE_VERBOSE_MAKEFILE 0) # 1 should be used for debugging
 set (CMAKE_SUPPRESS_REGENERATION TRUE) # Suppresses ZERO_CHECK
@@ -44,6 +44,7 @@ include_directories(
     libs/glfw/include/
     libs/glm/
     libs/stb/
+    libs/perlin/
 )
 
 file(GLOB GLAD_SOURCES libs/glad/src/glad.c)

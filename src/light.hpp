@@ -7,7 +7,7 @@
 
 static int id = 0;
 
-class Light : protected Node
+class Light : public Node
 {
     private:
         glm::vec3 mColor;
@@ -31,7 +31,7 @@ class Light : protected Node
     void updateUniform(Shader &shader)
     {
         int uPositionLoc = shader.getUniformLocation("u_light_positions") + mID;
-        glUniform3fv(uPositionLoc, 1, glm::value_ptr(mPosition));
+        glUniform3fv(uPositionLoc, 1, glm::value_ptr(getGlobalPosition()));
 
         int uColorLoc = shader.getUniformLocation("u_light_colors") + mID;
         glUniform3fv(uColorLoc, 1, glm::value_ptr(mColor));

@@ -176,7 +176,7 @@ public:
 
 class Circle : public Mesh
 {
-private:
+protected:
     glm::vec2 mDimensions;
 
 public:

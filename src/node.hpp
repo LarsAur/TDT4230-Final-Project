@@ -4,7 +4,7 @@
 #include <vector>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
-
+#include <glm/gtc/matrix_access.hpp>
 #include <glm/gtx/string_cast.hpp>
 
 class Node
@@ -76,4 +76,10 @@ class Node
                 child->updateTransforms(transformMatrix);
             }
         }
+
+        glm::vec3 getGlobalPosition()
+        {
+            return glm::column(mGlobalTransform, 3);
+        }
+        
 };

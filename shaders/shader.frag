@@ -16,6 +16,8 @@ layout(binding = 0) uniform sampler2D texDiffuse;
 layout(binding = 1) uniform sampler2D noise;
 
 const float alpha = 32.0;
+const float spec_factor = 0.5;
+const float diff_factor = 1.0;
 
 void main()
 {
@@ -41,7 +43,7 @@ void main()
             specular += attenuation * color * pow(clamp(dot(normalize(R_m), normalize(V)), 0, 1), alpha) ;
         }
 
-        gl_FragColor = vec4(diffuse, 1) * texture(texDiffuse, fragTextureCoordinate) + vec4(specular, 0); 
+        gl_FragColor = vec4(diffuse * diff_factor, 1) * texture(texDiffuse, fragTextureCoordinate) + vec4(specular * spec_factor, 0); 
     }
     else
     {
@@ -50,7 +52,7 @@ void main()
         mat2 rotation;
         rotation[0] = vec2(cos(u_time), -sin(u_time));
         rotation[1] = vec2(sin(u_time), cos(u_time));
-        const float border = 1.0 - texture(noise, rotation * (fragTextureCoordinate - 0.5)).r;
+        const float border = 1.0 - texture(noise, rotation * (fragTextureCoordinate - 0.5)*2).r;
         const float width = 5;
         const float height = 10;
 

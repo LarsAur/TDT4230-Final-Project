@@ -30,6 +30,43 @@ public:
         glUniform1i(uIsPortalLoc, 0);
     }
 
+    // Takes a node, the translation of the node and destination portal as input parameters.
+    // If the node is passing through this portal, the object is teleported to the destination portal with the correct offsets
+    void passthrough(Node &node, glm::vec3 translation, Portal &destination)
+    {
+        float normalDotDir = glm::dot(getNormal(), translation);
+        if(normalDotDir < 0) // Use less than 0 because we only want to enter the portal from the front
+        {
+            float t = glm::dot(getNormal(), node.getPosition() - getPosition()) / -normalDotDir;
+            if(t < 1 && t > 0)
+            {
+                glm::mat3 rotation = glm::mat3(getTransformMatrix());
+                
+                glm::vec3 u = rotation * glm::vec3(0, 1, 0);
+                glm::vec3 v = rotation * glm::vec3(1, 0, 0);
+                glm::vec3 zero = rotation * glm::vec3(0, 0, 1);
+
+                // Find the linear combination coefficients (a,b) of the vectors u and v in the portal plane.
+                // a * u + b * v = transform * t
+                glm::mat3 inv = glm::inverse(glm::mat3(u, v, zero));
+                glm::vec3 ab = inv * (node.getPosition() + translation * t - getPosition());
+
+                // Check if a and b are within the oval of the portal 
+                if(pow(ab[0] / mDimensions.y, 2) + pow(ab[1] / mDimensions.x, 2) <= 1)
+                {
+                    glm::vec3 deltaPos = getPosition() - (node.getPosition() + translation * t);
+                    glm::vec3 deltaRot = destination.getRotation() - getRotation();
+
+                    deltaPos.y = -deltaPos.y;
+
+                    node.setPosition(destination.getPosition() + (deltaPos * glm::inverse(rotation) * glm::mat3(destination.getTransformMatrix())));
+                    node.rotate(deltaRot);
+                    node.rotate(u * glm::radians(180.0f));
+                }
+            }
+        }
+    }
+
     // Looking out out of the destination portal, with the same view as into this portal
     glm::mat4 getViewMatrix(glm::mat4 cameraViewMatrix, Portal *destPortal)
     {

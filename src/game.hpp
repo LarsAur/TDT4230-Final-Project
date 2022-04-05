@@ -20,8 +20,8 @@ typedef struct gamedata_st
 
     Node *root;
 
-    Mesh *cube;
-    Mesh *chamber;
+    Cube *cube;
+    Cube *chamber;
     Mesh *portalGun;
     Mesh *player;
     Portal *portals[2];

@@ -73,7 +73,7 @@ void init(gamedata_st &gamedata)
     gamedata.farCamera = new Camera(*gamedata.window, glm::vec3(0), glm::vec3(0), M_PI / 2, 0.001f, 200.0f);
     gamedata.nearCamera = new Camera(*gamedata.window, glm::vec3(0), glm::vec3(0), M_PI / 2, 0.001f, 1.0f);
 
-    gamedata.cube = new Cube(glm::vec3(1.0f, 1.0f, 1.0f), false);
+    gamedata.cube = new Cube(glm::vec3(5.0f, 5.0f, 5.0f), false);
     gamedata.chamber = new Cube(glm::vec3(30, 30, 30), true);
     gamedata.portalGun = new ObjMesh("../res/models/PortalGunNormals.obj", 0.01f);
     gamedata.player = new Cube(glm::vec3(1.0f, 1.0f, 1.0f), false);
@@ -98,7 +98,7 @@ void init(gamedata_st &gamedata)
     gamedata.farCamera->addChild(*gamedata.player);
 
     // Add lights
-    gamedata.lights[0] = new Light(glm::vec3(0,5,0), glm::vec3(0, 0, 0));
+    gamedata.lights[0] = new Light(glm::vec3(0,5,0), glm::vec3(0.3, 0.3, 0.3));
     gamedata.lights[1] = new Light(glm::vec3(0, 0, 0.5), glm::vec3(0.36, 0.58, 1.0));
     gamedata.lights[2] = new Light(glm::vec3(0, 0, 0.5), glm::vec3(1.0, 0.5, 0.05));
     gamedata.portals[0]->addChild(*gamedata.lights[1]);
@@ -120,11 +120,15 @@ void init(gamedata_st &gamedata)
     gamedata.portalGun->setPosition(glm::vec3(0.007f, -0.005f, -0.01f));
     gamedata.portalGun->setRotation(glm::vec3(0, -0.3f, 0.1f));
 
-    gamedata.portals[0]->translate(glm::vec3(-14.9, 0, 5));
+    gamedata.portals[0]->translate(glm::vec3(-14.9, -10, 5));
     gamedata.portals[0]->rotate(glm::vec3(0, M_PI / 2, 0));
 
-    gamedata.portals[1]->translate(glm::vec3(14.9, 0, -5));
+    gamedata.portals[1]->translate(glm::vec3(14.9, -10, -5));
     gamedata.portals[1]->rotate(glm::vec3(0, -M_PI / 2, 0));
+
+    gamedata.cube->setPosition(glm::vec3(0,-12.5, 0));
+
+    //gamedata.chamber->rotate(glm::vec3(0, M_PI / 4, 0));
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -135,11 +139,44 @@ void init(gamedata_st &gamedata)
     gamedata.window->disableCursor();
 }
 
+glm::vec3 toEuler(glm::vec3 axis, float angle) {
+	double s = sin(angle);
+	double c = cos(angle);
+	double t = 1 - c;
+	//  if axis is not already normalised then uncomment this
+	// double magnitude = Math.sqrt(x*x + y*y + z*z);
+	// if (magnitude==0) throw error;
+	// x /= magnitude;
+	// y /= magnitude;
+	// z /= magnitude;
+
+    glm::vec3 euler;
+	if ((axis.x * axis.y * t + axis.z * s) > 0.998) { // north pole singularity detected
+		euler.x = 2*atan2(axis.x * sin(angle/2), cos(angle/2));
+		euler.y = M_PI / 2;
+		euler.z = 0;
+		return euler;
+	}
+
+	if ((axis.x*axis.y*t + axis.z * s) < -0.998) { // south pole singularity detected
+		euler.x = -2 * atan2(axis.x * sin(angle / 2), cos( angle / 2));
+		euler.y = -M_PI / 2;
+		euler.z = 0;
+		return euler;
+	}
+
+	euler.x = atan2(axis.y * s - axis.x * axis.z * t , 1 - (axis.y * axis.y + axis.z* axis.z) * t);
+	euler.y = asin(axis.x * axis.y * t + axis.z * s) ;
+	euler.z = atan2(axis.x * s - axis.y * axis.z * t , 1 - (axis.x * axis.x + axis.z * axis.z) * t);
+    std::cout << glm::to_string(euler) << std::endl;
+    return euler;
+}
+
 void update(gamedata_st &gamedata)
 {
     double time = gamedata.window->getTime();
     gamedata.portalGun->setPosition(glm::vec3(0.007f, -0.005f + 0.0005f * sin(time / 10.0f), -0.01f));
-    gamedata.cube->rotate(glm::vec3(0, 0.01f, 0));
+    //gamedata.cube->rotate(glm::vec3(0, 0.01f, 0));
 
     gamedata.window->updateInput();
 
@@ -156,10 +193,21 @@ void update(gamedata_st &gamedata)
 
     // TODO: Only move the rest of the way out of the portal after going through
     gamedata.farCamera->translate(camTranslation);
-
     gamedata.portals[0]->passthrough(*gamedata.farCamera, camTranslation, *gamedata.portals[1]);
-
     gamedata.portals[1]->passthrough(*gamedata.farCamera, camTranslation, *gamedata.portals[0]);
+
+    glm::vec3 intersectNormal;
+    glm::vec3 intersection;
+    std::cout << glm::to_string(gamedata.farCamera->get3DLookingVector()) << std::endl;
+    if(gamedata.chamber->isColliding(*gamedata.farCamera, 100.0f * gamedata.farCamera->get3DLookingVector(), intersectNormal, intersection))
+    {
+        gamedata.portals[0]->setPosition(intersection + intersectNormal * 0.1f);
+        glm::vec3 a = glm::vec3(0, 0, 1);
+        glm::vec3 b = intersectNormal;
+        glm::vec3 axis = glm::cross(a, b);
+        float angle = acos(glm::dot(a,b) / (glm::length(a) * glm::length(b)));
+        gamedata.portals[0]->setRotation(glm::vec3(toEuler(axis, angle)));
+    }
 
     if (gamedata.window->isKeyDown(GLFW_KEY_ESCAPE))
         gamedata.window->close();
@@ -300,6 +348,28 @@ void renderWorld(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj)
 
 void destroy(gamedata_st &gamedata)
 {
+    // Destroy all meshes
+    gamedata.portals[0]->destroy();
+    gamedata.portals[1]->destroy();
+    gamedata.chamber->destroy();
+    gamedata.player->destroy();
+    gamedata.cube->destroy();
+    gamedata.portalGun->destroy();
+
+    // Destory all textures
+    gamedata.rubix->destroy();
+    gamedata.portalGunAlbedo->destroy();
+    gamedata.wall->destroy();
+
     gamedata.window->destroy();
     glfwTerminate();
+
+    // Delete all pointers in the gamedata
+    // TODO: This might be a bit too shady
+    for(long long unsigned int i = 0; i < (sizeof(gamedata) / sizeof(void*)); i++)
+    {
+        void** start = (void**) &gamedata;
+        delete *(start + i);
+        *(start + i) = nullptr;
+    }
 }

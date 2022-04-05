@@ -3,7 +3,6 @@
 #include <glad/glad.h>
 #include <vector>
 #include <glm/vec3.hpp>
-#include <glm/vec4.hpp>
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtx/string_cast.hpp>
 
@@ -80,6 +79,11 @@ class Node
         glm::vec3 getGlobalPosition()
         {
             return glm::column(mGlobalTransform, 3);
+        }
+
+        glm::mat3 getGlobalRotation()
+        {
+            return glm::mat3(mGlobalTransform);
         }
         
 };

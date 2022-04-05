@@ -16,6 +16,7 @@ layout(binding = 0) uniform sampler2D texDiffuse;
 layout(binding = 1) uniform sampler2D noise;
 
 const float alpha = 32.0;
+const float ambient = 0.2;
 const float spec_factor = 0.5;
 const float diff_factor = 1.0;
 
@@ -37,13 +38,13 @@ void main()
 
             float dist = length(L_m);
 
-            float attenuation = 1 / (0.01 + 0.01*dist + 0.005*pow(dist, 2));
+            float attenuation = 1 / (0.01 + 0.05*dist + 0.01*pow(dist, 2));
             
             diffuse += attenuation * color * clamp(dot(normalize(L_m), fragNormal), 0, 1);
             specular += attenuation * color * pow(clamp(dot(normalize(R_m), normalize(V)), 0, 1), alpha) ;
         }
 
-        gl_FragColor = vec4(diffuse * diff_factor, 1) * texture(texDiffuse, fragTextureCoordinate) + vec4(specular * spec_factor, 0); 
+        gl_FragColor = (vec4(vec3(ambient), 1) + vec4(diffuse * diff_factor, 1))  * texture(texDiffuse, fragTextureCoordinate) + vec4(specular * spec_factor, 0); 
     }
     else
     {
@@ -76,7 +77,7 @@ void main()
 
         if(radius > minRadius)
         {
-            gl_FragColor = vec4(u_portal_color - texture(noise, fragTextureCoordinate).r * 0.5, 1.0 - texture(noise, fragTextureCoordinate).r * 0.2);
+            gl_FragColor = vec4(u_portal_color - texture(noise, (-rotation * (fragTextureCoordinate - 0.5)) + 0.5).r * 0.5, 1.0 - texture(noise, fragTextureCoordinate).r * 0.2);
         }
         else
         {

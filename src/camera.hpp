@@ -86,9 +86,9 @@ public:
     glm::vec3 get3DLookingVector()
     {
         return glm::vec3(
-            sin(mRotation.y) * sin(mRotation.x),
-            cos(mRotation.x),
-            cos(mRotation.y) * sin(mRotation.x)
+            sin(mRotation.y) * sin(mRotation.x - M_PI / 2),
+            cos(mRotation.x - M_PI / 2),
+            cos(mRotation.y) * sin(mRotation.x - M_PI / 2)
         );
     }
 

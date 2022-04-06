@@ -11,14 +11,14 @@ class Node
     protected:
         std::vector<Node*> children;
         glm::vec3 mPosition;
-        glm::vec3 mRotation;
+        glm::fquat mOrientation;
         
         glm::mat4 mGlobalTransform;
     public:
         Node()
         {
             setPosition(glm::vec3(0,0,0));
-            setRotation(glm::vec3(0,0,0));
+            setOrientation(glm::fquat(0,0,0,1));
         }
 
         void setPosition(glm::vec3 position)
@@ -31,19 +31,19 @@ class Node
             return mPosition;
         }
         
-        void setRotation(glm::vec3 rotation)
+        void setOrientation(glm::fquat orientation)
         {
-            mRotation = rotation;
+            mOrientation = orientation;
         }
 
-        glm::vec3 getRotation()
+        glm::fquat getOrientation()
         {
-            return mRotation;
+            return mOrientation;
         }
 
-        void rotate(glm::vec3 rotation)
+        void rotate(glm::vec3 axis, float angle)
         {
-            mRotation += rotation;
+            mOrientation = glm::rotate(mOrientation, angle, axis);
         }
 
         void translate(glm::vec3 translation)
@@ -63,10 +63,7 @@ class Node
 
         void updateTransforms(glm::mat4 transformMatrix = glm::identity<glm::mat4>())
         {
-            transformMatrix = glm::translate(transformMatrix, mPosition);
-            transformMatrix = glm::rotate(transformMatrix, mRotation.x, glm::vec3(1, 0, 0));
-            transformMatrix = glm::rotate(transformMatrix, mRotation.y, glm::vec3(0, 1, 0));
-            transformMatrix = glm::rotate(transformMatrix, mRotation.z, glm::vec3(0, 0, 1));
+            transformMatrix = glm::translate(transformMatrix, mPosition) * (glm::mat4) mOrientation;
 
             mGlobalTransform = transformMatrix;
 
@@ -81,7 +78,7 @@ class Node
             return glm::column(mGlobalTransform, 3);
         }
 
-        glm::mat3 getGlobalRotation()
+        glm::mat3 getGlobalOrientationMatrix()
         {
             return glm::mat3(mGlobalTransform);
         }

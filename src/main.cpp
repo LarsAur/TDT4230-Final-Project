@@ -70,8 +70,8 @@ void init(gamedata_st &gamedata)
     gamedata.shader->link();
     gamedata.shader->activate();
 
-    gamedata.farCamera = new Camera(*gamedata.window, glm::vec3(0), glm::vec3(0), M_PI / 2, 0.001f, 200.0f);
-    gamedata.nearCamera = new Camera(*gamedata.window, glm::vec3(0), glm::vec3(0), M_PI / 2, 0.001f, 1.0f);
+    gamedata.farCamera = new Camera(*gamedata.window, glm::vec3(0), M_PI / 2, 0.001f, 200.0f);
+    gamedata.nearCamera = new Camera(*gamedata.window, glm::vec3(0), M_PI / 2, 0.001f, 1.0f);
 
     gamedata.cube = new Cube(glm::vec3(5.0f, 5.0f, 5.0f), false);
     gamedata.chamber = new Cube(glm::vec3(30, 30, 30), true);
@@ -118,13 +118,14 @@ void init(gamedata_st &gamedata)
     gamedata.player->albedo = gamedata.rubix;
 
     gamedata.portalGun->setPosition(glm::vec3(0.007f, -0.005f, -0.01f));
-    gamedata.portalGun->setRotation(glm::vec3(0, -0.3f, 0.1f));
+    gamedata.portalGun->rotate(glm::vec3(0, 1.0f, 0), -0.3f);
+    gamedata.portalGun->rotate(glm::vec3(0, 0, 1.0f), 0.1f);
 
     gamedata.portals[0]->translate(glm::vec3(-14.9, -10, 5));
-    gamedata.portals[0]->rotate(glm::vec3(0, M_PI / 2, 0));
+    gamedata.portals[0]->rotate(glm::vec3(0, 1, 0), M_PI / 2);
 
     gamedata.portals[1]->translate(glm::vec3(14.9, -10, -5));
-    gamedata.portals[1]->rotate(glm::vec3(0, -M_PI / 2, 0));
+    gamedata.portals[1]->rotate(glm::vec3(0, 1, 0), -M_PI / 2);
 
     gamedata.cube->setPosition(glm::vec3(0,-12.5, 0));
 
@@ -139,39 +140,6 @@ void init(gamedata_st &gamedata)
     gamedata.window->disableCursor();
 }
 
-glm::vec3 toEuler(glm::vec3 axis, float angle) {
-	double s = sin(angle);
-	double c = cos(angle);
-	double t = 1 - c;
-	//  if axis is not already normalised then uncomment this
-	// double magnitude = Math.sqrt(x*x + y*y + z*z);
-	// if (magnitude==0) throw error;
-	// x /= magnitude;
-	// y /= magnitude;
-	// z /= magnitude;
-
-    glm::vec3 euler;
-	if ((axis.x * axis.y * t + axis.z * s) > 0.998) { // north pole singularity detected
-		euler.x = 2*atan2(axis.x * sin(angle/2), cos(angle/2));
-		euler.y = M_PI / 2;
-		euler.z = 0;
-		return euler;
-	}
-
-	if ((axis.x*axis.y*t + axis.z * s) < -0.998) { // south pole singularity detected
-		euler.x = -2 * atan2(axis.x * sin(angle / 2), cos( angle / 2));
-		euler.y = -M_PI / 2;
-		euler.z = 0;
-		return euler;
-	}
-
-	euler.x = atan2(axis.y * s - axis.x * axis.z * t , 1 - (axis.y * axis.y + axis.z* axis.z) * t);
-	euler.y = asin(axis.x * axis.y * t + axis.z * s) ;
-	euler.z = atan2(axis.x * s - axis.y * axis.z * t , 1 - (axis.x * axis.x + axis.z * axis.z) * t);
-    std::cout << glm::to_string(euler) << std::endl;
-    return euler;
-}
-
 void update(gamedata_st &gamedata)
 {
     double time = gamedata.window->getTime();
@@ -180,11 +148,8 @@ void update(gamedata_st &gamedata)
 
     gamedata.window->updateInput();
 
-    gamedata.farCamera->rotateClamp(glm::vec3(
-        -gamedata.window->getMouseDelta().y / 500,
-        -gamedata.window->getMouseDelta().x / 500,
-        0.0f));
-
+    gamedata.farCamera->direct(-gamedata.window->getMouseDelta().x / 500, -gamedata.window->getMouseDelta().y / 500);
+    
     glm::vec3 camTranslation = gamedata.farCamera->getFirstPersonTranslation(glm::vec3(
         (gamedata.window->isKeyDown(GLFW_KEY_D) - gamedata.window->isKeyDown(GLFW_KEY_A)) / 5.0f,
         (gamedata.window->isKeyDown(GLFW_KEY_SPACE) - gamedata.window->isKeyDown(GLFW_KEY_LEFT_SHIFT)) / 5.0f,
@@ -198,15 +163,15 @@ void update(gamedata_st &gamedata)
 
     glm::vec3 intersectNormal;
     glm::vec3 intersection;
-    std::cout << glm::to_string(gamedata.farCamera->get3DLookingVector()) << std::endl;
+    //std::cout << glm::to_string(gamedata.farCamera->get3DLookingVector()) << std::endl;
     if(gamedata.chamber->isColliding(*gamedata.farCamera, 100.0f * gamedata.farCamera->get3DLookingVector(), intersectNormal, intersection))
     {
-        gamedata.portals[0]->setPosition(intersection + intersectNormal * 0.1f);
+        //gamedata.portals[0]->setPosition(intersection + intersectNormal * 0.1f);
         glm::vec3 a = glm::vec3(0, 0, 1);
         glm::vec3 b = intersectNormal;
         glm::vec3 axis = glm::cross(a, b);
         float angle = acos(glm::dot(a,b) / (glm::length(a) * glm::length(b)));
-        gamedata.portals[0]->setRotation(glm::vec3(toEuler(axis, angle)));
+        //gamedata.portals[0]->rotate(axis, angle);
     }
 
     if (gamedata.window->isKeyDown(GLFW_KEY_ESCAPE))

@@ -367,7 +367,7 @@ public:
         for(int face = 0; face < 6; face++)
         {
             // Normal of the face after rotation
-            glm::vec3 normal = getGlobalRotation() * norms[face];
+            glm::vec3 normal = getGlobalOrientationMatrix() * norms[face];
 
             // Calculate the center of the face
             glm::vec3 center = getGlobalPosition();
@@ -381,7 +381,7 @@ public:
                 if(t < 1 && t > 0)
                 {
                     glm::vec3 intersection = node.getGlobalPosition() + translation * t;
-                    glm::vec3 localPosition = (intersection - getGlobalPosition()) * glm::inverse(getGlobalRotation());
+                    glm::vec3 localPosition = (intersection - getGlobalPosition()) * glm::inverse(getGlobalOrientationMatrix());
                     glm::vec3 absLocal = glm::abs(localPosition);
 
                     if(
@@ -392,7 +392,6 @@ public:
                     {
                         outNormal = normal;
                         outIntersection = intersection;
-                        std::cout << glm::to_string(intersection) << std::endl;
                         return true;
                     }
                 }

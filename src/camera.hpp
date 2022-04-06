@@ -6,6 +6,8 @@
 #include <glm/mat4x4.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
+#include <glm/gtx/euler_angles.hpp> 
+#include <glm/gtc/quaternion.hpp>
 #include <node.hpp>
 
 #include <glm/gtx/string_cast.hpp>
@@ -22,16 +24,19 @@ private:
     float mnear;
     float mfar;
 
+    float yaw, pitch;
 
 public:
-    Camera(Window &window, glm::vec3 position, glm::vec3 rotation, float fov, float near, float far)
+    Camera(Window &window, glm::vec3 position, float fov, float near, float far)
     {
         setPosition(position);
-        setRotation(rotation);
+        setOrientation(glm::fquat(0,0,0,1));
         mfov = fov;
         mnear = near;
         mfar = far;
         mWindow = &window;
+        yaw = 0;
+        pitch = 0;
     }
 
     glm::mat4 getPerspectiveMatrix()
@@ -42,15 +47,7 @@ public:
 
     glm::mat4 getViewMatrix()
     {
-        glm::vec3 upVector = glm::vec3(0, 1, 0);
-        glm::vec3 pitchVector = glm::vec3(1, 0, 0);
-        glm::mat4 camera = glm::identity<glm::mat4>();
-        
-        camera = glm::translate(camera, mPosition);
-        camera = glm::rotate(camera, mRotation.y, upVector);
-        camera = glm::rotate(camera, mRotation.x, pitchVector);
-        
-        glm::mat4 view = glm::inverse(camera);
+        glm::mat4 view = glm::inverse(getTransformMatrix());
         return view;
     }
 
@@ -77,28 +74,26 @@ public:
                translation[2] * forwardVector;
     }
 
-    void rotateClamp(glm::vec3 rotation)
+    void direct(float dYaw, float dPitch)
     {
-        mRotation += rotation;
-        mRotation.x = std::min(std::max((double) mRotation.x, -M_PI / 2 + 0.1f), M_PI / 2 - 0.1f);
+        yaw += dYaw;
+        pitch += dPitch;
+        pitch = std::min(std::max((double) pitch, -M_PI / 2 + 0.1f), M_PI / 2 - 0.1f);
+
+        setOrientation((glm::fquat) (glm::yawPitchRoll(yaw, pitch, 0.0f)));
     }
 
     glm::vec3 get3DLookingVector()
     {
-        return glm::vec3(
-            sin(mRotation.y) * sin(mRotation.x - M_PI / 2),
-            cos(mRotation.x - M_PI / 2),
-            cos(mRotation.y) * sin(mRotation.x - M_PI / 2)
-        );
+        return glm::vec3(0, -1, 0) * (glm::mat3) getOrientation();
     }
 
     // The y (up) component is set to zero
     glm::vec3 get2DLookingVector()
     {
-        return -glm::vec3(
-            sin(mRotation.y),
-            0,
-            cos(mRotation.y)
-        );
+        glm::vec3 look = get3DLookingVector();
+        std::cout << glm::to_string(look) << std::endl;
+        look.y = 0;
+        return glm::normalize(look);
     }
 };

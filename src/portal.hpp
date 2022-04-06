@@ -55,13 +55,13 @@ public:
                 if(pow(ab[0] / mDimensions.y, 2) + pow(ab[1] / mDimensions.x, 2) <= 1)
                 {
                     glm::vec3 deltaPos = getPosition() - (node.getPosition() + translation * t);
-                    glm::vec3 deltaRot = destination.getRotation() - getRotation();
+                    //glm::vec3 deltaRot = destination.getRotation() - getRotation();
 
                     deltaPos.y = -deltaPos.y;
 
                     node.setPosition(destination.getPosition() + (deltaPos * glm::inverse(rotation) * glm::mat3(destination.getTransformMatrix())));
-                    node.rotate(deltaRot);
-                    node.rotate(u * glm::radians(180.0f));
+                    //node.rotate(deltaRot);
+                    //node.rotate(u * glm::radians(180.0f));
                 }
             }
         }

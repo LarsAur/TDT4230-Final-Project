@@ -52,7 +52,9 @@ public:
                 glm::vec3 ab = inv * (node.getPosition() + translation * t - getPosition());
 
                 // Check if a and b are within the oval of the portal 
-                if(pow(ab[0] / mDimensions.y, 2) + pow(ab[1] / mDimensions.x, 2) <= 1)
+
+                printf("a: %f, b: %f\n", ab[0], ab[1]);
+                if(pow(2 * ab[0] / mDimensions.y, 2) + pow(2 * ab[1] / mDimensions.x, 2) <= 1)
                 {
                     glm::vec3 deltaPos = getPosition() - (node.getPosition() + translation * t);
                     glm::vec3 deltaRot = glm::eulerAngles(destination.getOrientation()) - glm::eulerAngles(getOrientation());

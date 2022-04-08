@@ -32,7 +32,7 @@ public:
 
     // Takes a node, the translation of the node and destination portal as input parameters.
     // If the node is passing through this portal, the object is teleported to the destination portal with the correct offsets
-    void passthrough(Node &node, glm::vec3 translation, Portal &destination)
+    void passthrough(Camera &node, glm::vec3 translation, Portal &destination)
     {
         float normalDotDir = glm::dot(getNormal(), translation);
         if(normalDotDir < 0) // Use less than 0 because we only want to enter the portal from the front
@@ -55,11 +55,15 @@ public:
                 if(pow(ab[0] / mDimensions.y, 2) + pow(ab[1] / mDimensions.x, 2) <= 1)
                 {
                     glm::vec3 deltaPos = getPosition() - (node.getPosition() + translation * t);
-                    //glm::vec3 deltaRot = destination.getRotation() - getRotation();
+                    glm::vec3 deltaRot = glm::eulerAngles(destination.getOrientation()) - glm::eulerAngles(getOrientation());
+
+                    printf("Delta rotation Y: %f\n", deltaRot.y);
 
                     deltaPos.y = -deltaPos.y;
 
                     node.setPosition(destination.getPosition() + (deltaPos * glm::inverse(rotation) * glm::mat3(destination.getTransformMatrix())));
+                    
+                    node.direct(-deltaRot.y + M_PI, 0);
                     //node.rotate(deltaRot);
                     //node.rotate(u * glm::radians(180.0f));
                 }
@@ -76,8 +80,12 @@ public:
 
     glm::vec3 getNormal()
     {
-        glm::mat4 corrected = glm::rotate(mGlobalTransform, glm::radians(90.0f), glm::vec3(1, 0, 0));
-        return glm::mat3(glm::transpose(glm::inverse(corrected))) * glm::vec3(0, 1, 0);
+        return glm::vec3(0, 0, 1) * glm::mat3_cast(glm::conjugate(getOrientation()));
+    }
+
+    glm::vec3 getUp()
+    {
+        return glm::vec3(0, 1, 0) * glm::mat3_cast(glm::conjugate(getOrientation()));
     }
 
     /* Source: http://www.terathon.com/lengyel/Lengyel-Oblique.pdf */

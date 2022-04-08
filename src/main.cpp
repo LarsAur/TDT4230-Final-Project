@@ -50,8 +50,8 @@ int main()
         }
 
         // Run render and update loop
-        render(gamedata);
         update(gamedata);
+        render(gamedata);
         frames++;
     }
 
@@ -70,7 +70,7 @@ void init(gamedata_st &gamedata)
     gamedata.shader->link();
     gamedata.shader->activate();
 
-    gamedata.farCamera = new Camera(*gamedata.window, glm::vec3(0), M_PI / 2, 0.001f, 200.0f);
+    gamedata.farCamera = new Camera(*gamedata.window, glm::vec3(0), M_PI / 2, 0.001f, 150.0f);
     gamedata.nearCamera = new Camera(*gamedata.window, glm::vec3(0), M_PI / 2, 0.001f, 1.0f);
 
     gamedata.cube = new Cube(glm::vec3(5.0f, 5.0f, 5.0f), false);
@@ -121,15 +121,13 @@ void init(gamedata_st &gamedata)
     gamedata.portalGun->rotate(glm::vec3(0, 1.0f, 0), -0.3f);
     gamedata.portalGun->rotate(glm::vec3(0, 0, 1.0f), 0.1f);
 
-    gamedata.portals[0]->translate(glm::vec3(-14.9, -10, 5));
+    gamedata.portals[0]->translate(glm::vec3(-14.8, -10, 5));
     gamedata.portals[0]->rotate(glm::vec3(0, 1, 0), M_PI / 2);
 
-    gamedata.portals[1]->translate(glm::vec3(14.9, -10, -5));
+    gamedata.portals[1]->translate(glm::vec3(14.8, -10, -5));
     gamedata.portals[1]->rotate(glm::vec3(0, 1, 0), -M_PI / 2);
 
     gamedata.cube->setPosition(glm::vec3(0,-12.5, 0));
-
-    //gamedata.chamber->rotate(glm::vec3(0, M_PI / 4, 0));
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -142,6 +140,7 @@ void init(gamedata_st &gamedata)
 
 void update(gamedata_st &gamedata)
 {
+    gamedata.root->updateTransforms();
     double time = gamedata.window->getTime();
     gamedata.portalGun->setPosition(glm::vec3(0.007f, -0.005f + 0.0005f * sin(time / 10.0f), -0.01f));
     //gamedata.cube->rotate(glm::vec3(0, 0.01f, 0));
@@ -161,18 +160,59 @@ void update(gamedata_st &gamedata)
     gamedata.portals[0]->passthrough(*gamedata.farCamera, camTranslation, *gamedata.portals[1]);
     gamedata.portals[1]->passthrough(*gamedata.farCamera, camTranslation, *gamedata.portals[0]);
 
-    glm::vec3 intersectNormal;
-    glm::vec3 intersection;
-    //std::cout << glm::to_string(gamedata.farCamera->get3DLookingVector()) << std::endl;
-    if(gamedata.chamber->isColliding(*gamedata.farCamera, 100.0f * gamedata.farCamera->get3DLookingVector(), intersectNormal, intersection))
+    glm::vec3 intersectNormal1, intersectNormal2;
+    glm::vec3 intersection1, intersection2;
+    if(
+        gamedata.window->isMouseButtonPressed(GLFW_MOUSE_BUTTON_1) && 
+        gamedata.chamber->isColliding(gamedata.farCamera->getGlobalPosition(), 100.0f * gamedata.farCamera->get3DLookingVector(), intersectNormal1, intersection1) && 
+        gamedata.chamber->isColliding(gamedata.farCamera->getGlobalPosition() + gamedata.farCamera->getUpVector() * gamedata.portals[0]->getDimensions().y * 0.5f, 100.0f * gamedata.farCamera->get3DLookingVector(), intersectNormal2, intersection2) &&
+        intersectNormal1 == intersectNormal2
+    )
     {
-        //gamedata.portals[0]->setPosition(intersection + intersectNormal * 0.1f);
-        glm::vec3 a = glm::vec3(0, 0, 1);
-        glm::vec3 b = intersectNormal;
-        glm::vec3 axis = glm::cross(a, b);
-        float angle = acos(glm::dot(a,b) / (glm::length(a) * glm::length(b)));
-        //gamedata.portals[0]->rotate(axis, angle);
+        gamedata.portals[0]->setOrientation(glm::fquat(1,0,0,0));
+        gamedata.portals[0]->setPosition(intersection1 + intersectNormal1 * 0.2f);
+        glm::vec3 wallUp = glm::normalize(intersection2 - intersection1);
+        
+        // Align the normal of the wall to the normal of the portal
+        glm::vec3 portalNormal = gamedata.portals[0]->getNormal();
+        float dot = glm::dot(portalNormal, intersectNormal1);
+        float angle = acos(dot);
+        glm::vec3 axis = glm::normalize(glm::cross(portalNormal, intersectNormal1));
+
+        if(dot > 0.99)
+        {
+            angle = 0;
+            axis = glm::vec3(1,0,0);
+        }
+        else if(dot < -0.99)
+        {
+            angle = M_PI;
+            axis = wallUp;
+        }
+        
+        gamedata.portals[0]->rotate(axis, angle);
+
+        // Align the up direction of the portal, to the up vector defined by the ray-casts
+        glm::vec3 portalUp = gamedata.portals[0]->getUp();
+        dot = glm::dot(portalUp, wallUp);
+        angle = acos(dot);
+        axis = glm::cross(portalUp, wallUp) * gamedata.portals[0]->getOrientation();
+
+        if(dot > 0.99)
+        {
+            angle = 0;
+            axis = glm::vec3(1,0,0);
+        }
+        else if(dot < -0.99)
+        {
+            angle = M_PI;
+            axis = intersectNormal1;
+        }
+
+        gamedata.portals[0]->rotate(axis, angle);
     }
+
+    //gamedata.portals[0]->rotate(gamedata.portals[0]->getNormal(), 0.01f);
 
     if (gamedata.window->isKeyDown(GLFW_KEY_ESCAPE))
         gamedata.window->close();
@@ -182,7 +222,6 @@ void render(gamedata_st &gamedata)
 {
     int uTimeLoc = gamedata.shader->getUniformLocation("u_time");
     glUniform1f(uTimeLoc, (float) gamedata.window->getTime());
-    gamedata.root->updateTransforms();
 
     gamedata.lights[0]->updateUniform(*gamedata.shader);
     gamedata.lights[1]->updateUniform(*gamedata.shader);

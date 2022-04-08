@@ -356,10 +356,10 @@ public:
         }
     }
 
-    // Takes a node and its translation and checks if there is an intersection of the cube.
+    // Takes a position and its translation and checks if there is an intersection of the cube.
     // If there is an intersection, the outNormal is the normal of the surface of the cube
     // which is hit, the position and true is returned. If there is no collision, false is returned
-    bool isColliding(Node &node, glm::vec3 translation, glm::vec3 &outNormal, glm::vec3 &outIntersection)
+    bool isColliding(glm::vec3 position, glm::vec3 translation, glm::vec3 &outNormal, glm::vec3 &outIntersection)
     {
         const float epsilon = 0.001f;
         // Iterate the 6 faces of the cube
@@ -377,10 +377,10 @@ public:
             float normalDotDir = glm::dot(normal, translation);
             if(normalDotDir < 0)
             {
-                float t = glm::dot(normal, node.getGlobalPosition() - center) / -normalDotDir;
+                float t = glm::dot(normal, position - center) / -normalDotDir;
                 if(t < 1 && t > 0)
                 {
-                    glm::vec3 intersection = node.getGlobalPosition() + translation * t;
+                    glm::vec3 intersection = position + translation * t;
                     glm::vec3 localPosition = (intersection - getGlobalPosition()) * glm::inverse(getGlobalOrientationMatrix());
                     glm::vec3 absLocal = glm::abs(localPosition);
 

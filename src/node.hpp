@@ -18,7 +18,7 @@ class Node
         Node()
         {
             setPosition(glm::vec3(0,0,0));
-            setOrientation(glm::fquat(0,0,0,1));
+            setOrientation(glm::fquat(1,0,0,0));
         }
 
         void setPosition(glm::vec3 position)
@@ -44,6 +44,16 @@ class Node
         void rotate(glm::vec3 axis, float angle)
         {
             mOrientation = glm::rotate(mOrientation, angle, axis);
+        }
+
+        void rotate(glm::vec3 eulerAngles)
+        {
+            glm::fquat rot = glm::fquat(1, 0, 0, 0);
+            rot = glm::rotate(rot, eulerAngles.y, glm::vec3(0,1,0));
+            rot = glm::rotate(rot, eulerAngles.x, glm::vec3(1,0,0));
+            rot = glm::rotate(rot, eulerAngles.z, glm::vec3(0,0,1));
+
+            mOrientation = mOrientation * rot;
         }
 
         void translate(glm::vec3 translation)

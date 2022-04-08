@@ -30,7 +30,6 @@ public:
     Camera(Window &window, glm::vec3 position, float fov, float near, float far)
     {
         setPosition(position);
-        setOrientation(glm::fquat(0,0,0,1));
         mfov = fov;
         mnear = near;
         mfar = far;
@@ -47,8 +46,9 @@ public:
 
     glm::mat4 getViewMatrix()
     {
-        glm::mat4 view = glm::inverse(getTransformMatrix());
-        return view;
+        glm::mat4 rot = glm::mat4_cast(glm::conjugate(getOrientation()));
+        glm::mat4 pos = glm::translate(glm::mat4(1.0f), -getPosition());
+        return rot * pos;
     }
 
     void cameraTranslate(glm::vec3 translation)
@@ -57,7 +57,7 @@ public:
         glm::vec3 forwardVector = get2DLookingVector();
         glm::vec3 rightVector = glm::cross(forwardVector, upVector);
 
-        mPosition+= translation[0] * rightVector + 
+        mPosition += translation[0] * rightVector + 
                     translation[1] * upVector +
                     translation[2] * forwardVector;
     }
@@ -80,19 +80,29 @@ public:
         pitch += dPitch;
         pitch = std::min(std::max((double) pitch, -M_PI / 2 + 0.1f), M_PI / 2 - 0.1f);
 
-        setOrientation((glm::fquat) (glm::yawPitchRoll(yaw, pitch, 0.0f)));
+        setOrientation(glm::fquat(1,0,0,0));
+        rotate(glm::vec3(0,1,0), yaw);
+        rotate(glm::vec3(1,0,0), pitch);
+
+        //rotate(glm::vec3(dYaw, dPitch, 0));
+
     }
 
+    // TODO: For some reason the x component is inverted
     glm::vec3 get3DLookingVector()
     {
-        return glm::vec3(0, -1, 0) * (glm::mat3) getOrientation();
+        return glm::vec3(0, 0, -1) * glm::mat3_cast(glm::conjugate(getOrientation()));
+    }
+
+    glm::vec3 getUpVector()
+    {
+        return glm::vec3(0, 1, 0) * glm::mat3_cast(glm::conjugate(getOrientation()));
     }
 
     // The y (up) component is set to zero
     glm::vec3 get2DLookingVector()
     {
         glm::vec3 look = get3DLookingVector();
-        std::cout << glm::to_string(look) << std::endl;
         look.y = 0;
         return glm::normalize(look);
     }

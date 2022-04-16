@@ -6,6 +6,8 @@
 #include <glm/mat4x4.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
+#include <glm/gtx/euler_angles.hpp> 
+#include <glm/gtc/quaternion.hpp>
 #include <node.hpp>
 
 #include <glm/gtx/string_cast.hpp>
@@ -22,16 +24,18 @@ private:
     float mnear;
     float mfar;
 
+    float yaw, pitch;
 
 public:
-    Camera(Window &window, glm::vec3 position, glm::vec3 rotation, float fov, float near, float far)
+    Camera(Window &window, glm::vec3 position, float fov, float near, float far)
     {
         setPosition(position);
-        setRotation(rotation);
         mfov = fov;
         mnear = near;
         mfar = far;
         mWindow = &window;
+        yaw = 0;
+        pitch = 0;
     }
 
     glm::mat4 getPerspectiveMatrix()
@@ -42,16 +46,9 @@ public:
 
     glm::mat4 getViewMatrix()
     {
-        glm::vec3 upVector = glm::vec3(0, 1, 0);
-        glm::vec3 pitchVector = glm::vec3(1, 0, 0);
-        glm::mat4 camera = glm::identity<glm::mat4>();
-        
-        camera = glm::translate(camera, mPosition);
-        camera = glm::rotate(camera, mRotation.y, upVector);
-        camera = glm::rotate(camera, mRotation.x, pitchVector);
-        
-        glm::mat4 view = glm::inverse(camera);
-        return view;
+        glm::mat4 rot = glm::mat4_cast(glm::conjugate(getOrientation()));
+        glm::mat4 pos = glm::translate(glm::mat4(1.0f), -getPosition());
+        return rot * pos;
     }
 
     void cameraTranslate(glm::vec3 translation)
@@ -60,7 +57,7 @@ public:
         glm::vec3 forwardVector = get2DLookingVector();
         glm::vec3 rightVector = glm::cross(forwardVector, upVector);
 
-        mPosition+= translation[0] * rightVector + 
+        mPosition += translation[0] * rightVector + 
                     translation[1] * upVector +
                     translation[2] * forwardVector;
     }
@@ -77,28 +74,33 @@ public:
                translation[2] * forwardVector;
     }
 
-    void rotateClamp(glm::vec3 rotation)
+    void direct(float dYaw, float dPitch)
     {
-        mRotation += rotation;
-        mRotation.x = std::min(std::max((double) mRotation.x, -M_PI / 2 + 0.1f), M_PI / 2 - 0.1f);
+        yaw += dYaw;
+        pitch += dPitch;
+        pitch = std::min(std::max((double) pitch, -M_PI / 2 + 0.1f), M_PI / 2 - 0.1f);
+
+        setOrientation(glm::fquat(1,0,0,0));
+        rotate(glm::vec3(0,1,0), yaw);
+        rotate(glm::vec3(1,0,0), pitch);
     }
 
+    // TODO: For some reason the x component is inverted
     glm::vec3 get3DLookingVector()
     {
-        return glm::vec3(
-            sin(mRotation.y) * sin(mRotation.x),
-            cos(mRotation.x),
-            cos(mRotation.y) * sin(mRotation.x)
-        );
+        return glm::vec3(0, 0, -1) * glm::mat3_cast(glm::conjugate(getOrientation()));
+    }
+
+    glm::vec3 getUpVector()
+    {
+        return glm::vec3(0, 1, 0) * glm::mat3_cast(glm::conjugate(getOrientation()));
     }
 
     // The y (up) component is set to zero
     glm::vec3 get2DLookingVector()
     {
-        return -glm::vec3(
-            sin(mRotation.y),
-            0,
-            cos(mRotation.y)
-        );
+        glm::vec3 look = get3DLookingVector();
+        look.y = 0;
+        return glm::normalize(look);
     }
 };

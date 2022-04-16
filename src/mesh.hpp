@@ -72,6 +72,13 @@ public:
 
         glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
     }
+
+    void destroy()
+    {
+        glDeleteBuffers(vbos.size(), vbos.data());
+        glDeleteBuffers(1, &ebo);
+        glDeleteBuffers(1, &vao);
+    }
 };
 
 class ObjMesh : public Mesh
@@ -277,9 +284,15 @@ private:
         glm::vec3(0, 0, 1),
         glm::vec3(0, 0, -1)};
 
+    glm::vec3 mDimension;
+    bool mInside;
+
 public:
     Cube(glm::vec3 dimensions, bool inside)
     {
+        mInside = inside;
+        mDimension = dimensions;
+
         glm::vec3 verts[8];
         int idx[36];
 
@@ -341,5 +354,49 @@ public:
                 }
             }
         }
+    }
+
+    // Takes a position and its translation and checks if there is an intersection of the cube.
+    // If there is an intersection, the outNormal is the normal of the surface of the cube
+    // which is hit, the position and true is returned. If there is no collision, false is returned
+    bool isColliding(glm::vec3 position, glm::vec3 translation, glm::vec3 &outNormal, glm::vec3 &outIntersection)
+    {
+        const float epsilon = 0.001f;
+        // Iterate the 6 faces of the cube
+        // TODO: This can have an early exit in some cases to make it more efficient
+        for(int face = 0; face < 6; face++)
+        {
+            // Normal of the face after rotation
+            glm::vec3 normal = getGlobalOrientationMatrix() * norms[face];
+
+            // Calculate the center of the face
+            glm::vec3 center = getGlobalPosition();
+            glm::vec3 offset = 0.5f * normal * glm::length(mDimension * norms[face]);
+            center = center + (mInside ? -offset : offset);
+
+            float normalDotDir = glm::dot(normal, translation);
+            if(normalDotDir < 0)
+            {
+                float t = glm::dot(normal, position - center) / -normalDotDir;
+                if(t < 1 && t > 0)
+                {
+                    glm::vec3 intersection = position + translation * t;
+                    glm::vec3 localPosition = (intersection - getGlobalPosition()) * glm::inverse(getGlobalOrientationMatrix());
+                    glm::vec3 absLocal = glm::abs(localPosition);
+
+                    if(
+                        absLocal.x < mDimension.x * 0.5f + epsilon &&
+                        absLocal.y < mDimension.y * 0.5f + epsilon &&
+                        absLocal.z < mDimension.z * 0.5f + epsilon
+                    )
+                    {
+                        outNormal = normal;
+                        outIntersection = intersection;
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 };

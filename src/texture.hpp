@@ -97,4 +97,9 @@ public:
     {
         glBindTextureUnit(textureUnitIndex, textureID);
     }
+
+    void destroy()
+    {
+        glDeleteTextures(1, &textureID);
+    }
 };

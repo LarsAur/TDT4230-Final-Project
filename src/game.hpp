@@ -19,20 +19,18 @@ typedef struct gamedata_st
     Window *window;
 
     Node *root;
-
+    ObjMesh *turret;
     Mesh *player;
-    Mesh *portalGun;
     Portal *portals[2];
 
     std::vector<Cube*> cubes;
 
-    Texture *portalGunAlbedo;
-    Texture *wall;
-    Texture *rubix;
-    Texture *noise;
+    Texture *wallTexture;
+    Texture *rubixTexture;
+    Texture *turretTexture;
+    Texture *noiseTexture;
 
-    Camera *nearCamera;
-    Camera *farCamera;
+    Camera *camera;
 
     Shader *shader;
 

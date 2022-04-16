@@ -25,6 +25,7 @@
 
 void init(gamedata_st &gamedata);
 void update(gamedata_st &gamedata);
+void placePortals(gamedata_st &gamedata);
 void render(gamedata_st &gamedata);
 void renderWorld(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj);
 void renderRecursivePortals(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj, int maxDepth);
@@ -70,18 +71,22 @@ void init(gamedata_st &gamedata)
     gamedata.shader->link();
     gamedata.shader->activate();
 
-    gamedata.farCamera = new Camera(*gamedata.window, glm::vec3(0), M_PI / 2, 0.001f, 150.0f);
-    gamedata.nearCamera = new Camera(*gamedata.window, glm::vec3(0), M_PI / 2, 0.001f, 1.0f);
+    // Create cameras
+    gamedata.farCamera = new Camera(*gamedata.window, glm::vec3(0), M_PI / 2, 0.01f, 200.0f);
+    gamedata.nearCamera = new Camera(*gamedata.window, glm::vec3(0), M_PI / 2, 0.1f, 1.0f);
 
-    gamedata.cube = new Cube(glm::vec3(5.0f, 5.0f, 5.0f), false);
-    gamedata.chamber = new Cube(glm::vec3(30, 30, 30), true);
+    // Create all meshes
     gamedata.portalGun = new ObjMesh("../res/models/PortalGunNormals.obj", 0.01f);
     gamedata.player = new Cube(glm::vec3(1.0f, 1.0f, 1.0f), false);
     gamedata.portals[0] = new Portal(glm::vec2(5, 10), glm::vec3(0.36f, 0.58f, 1.0f));
     gamedata.portals[1] = new Portal(glm::vec2(5, 10), glm::vec3(1.0f, 0.5f, 0.05f));
+    gamedata.cubes.push_back(new Cube(glm::vec3(120, 60, 60), true));   // The room
+    gamedata.cubes.push_back(new Cube(glm::vec3(20, 20, 60), false));   // The Long bar
+    gamedata.cubes.push_back(new Cube(glm::vec3(40, 20, 20), false));   // The center cube
+    gamedata.cubes.push_back(new Cube(glm::vec3(20, 60, 20), false));   // 45 degree corner
+    gamedata.cubes.push_back(new Cube(glm::vec3(20, 60, 20), false));   // 45 degree corner
 
-    gamedata.chamber->generateVertexData(*gamedata.shader);
-    gamedata.cube->generateVertexData(*gamedata.shader);
+    // Generate vertexdata for all meshes
     gamedata.portalGun->generateVertexData(*gamedata.shader);
     gamedata.portals[0]->generateVertexData(*gamedata.shader);
     gamedata.portals[1]->generateVertexData(*gamedata.shader);
@@ -90,19 +95,25 @@ void init(gamedata_st &gamedata)
     gamedata.root = new Node();
     gamedata.root->addChild(*gamedata.farCamera);
     gamedata.root->addChild(*gamedata.nearCamera);
-    gamedata.root->addChild(*gamedata.cube);
-    gamedata.root->addChild(*gamedata.chamber);
     gamedata.root->addChild(*gamedata.portalGun);
     gamedata.root->addChild(*gamedata.portals[0]);
     gamedata.root->addChild(*gamedata.portals[1]);
     gamedata.farCamera->addChild(*gamedata.player);
+    
+    gamedata.root->addChild(*gamedata.cubes[0]);
+    for(size_t i = 1; i < gamedata.cubes.size(); i++)
+    {
+        gamedata.cubes[0]->addChild(*gamedata.cubes[i]);
+    }
 
     // Add lights
-    gamedata.lights[0] = new Light(glm::vec3(0,5,0), glm::vec3(0.3, 0.3, 0.3));
-    gamedata.lights[1] = new Light(glm::vec3(0, 0, 0.5), glm::vec3(0.36, 0.58, 1.0));
-    gamedata.lights[2] = new Light(glm::vec3(0, 0, 0.5), glm::vec3(1.0, 0.5, 0.05));
-    gamedata.portals[0]->addChild(*gamedata.lights[1]);
-    gamedata.portals[1]->addChild(*gamedata.lights[2]);
+    gamedata.lights[0] = new Light(glm::vec3(0, 0, 0.5), glm::vec3(0.36, 0.58, 1.0));
+    gamedata.lights[1] = new Light(glm::vec3(0, 0, 0.5), glm::vec3(1.0, 0.5, 0.05));
+    gamedata.lights[2] = new Light(glm::vec3(-30,5,0), glm::vec3(0.5, 0.5, 0.5));
+    gamedata.lights[3] = new Light(glm::vec3(0,5,0), glm::vec3(0.5, 0.5, 0.5));
+    gamedata.lights[4] = new Light(glm::vec3(30,5,0), glm::vec3(0.5, 0.5, 0.5));
+    gamedata.portals[0]->addChild(*gamedata.lights[0]);
+    gamedata.portals[1]->addChild(*gamedata.lights[1]);
 
     // Load all textures
     gamedata.portalGunAlbedo = new Texture("../res/textures/portalgun_col.png", LINEAR);
@@ -111,23 +122,31 @@ void init(gamedata_st &gamedata)
     gamedata.noise = new Texture(255, 255, 4, 100, 34877u);
     gamedata.noise->bind(NOISE_TEXTURE_BINDING);
 
+    for(Cube *cube : gamedata.cubes)
+    {
+        cube->generateVertexData(*gamedata.shader);
+        cube->albedo = gamedata.wall;
+    }
+
     // Assign all initial textures
     gamedata.portalGun->albedo = gamedata.portalGunAlbedo;
-    gamedata.cube->albedo = gamedata.rubix;
-    gamedata.chamber->albedo = gamedata.wall;
     gamedata.player->albedo = gamedata.rubix;
-
+    
     gamedata.portalGun->setPosition(glm::vec3(0.007f, -0.005f, -0.01f));
     gamedata.portalGun->rotate(glm::vec3(0, 1.0f, 0), -0.3f);
     gamedata.portalGun->rotate(glm::vec3(0, 0, 1.0f), 0.1f);
 
-    gamedata.portals[0]->translate(glm::vec3(-14.8, -10, 5));
-    gamedata.portals[0]->rotate(glm::vec3(0, 1, 0), M_PI / 2);
+    // Place the portal such that they are out of the scene
+    gamedata.portals[0]->setPosition(glm::vec3(0, 100, 0));
+    gamedata.portals[1]->translate(glm::vec3(0, 100, 0));
 
-    gamedata.portals[1]->translate(glm::vec3(14.8, -10, -5));
-    gamedata.portals[1]->rotate(glm::vec3(0, 1, 0), -M_PI / 2);
+    gamedata.cubes[1]->setPosition(glm::vec3(50, -20, 0));
+    gamedata.cubes[2]->setPosition(glm::vec3(0, -20, -20));
+    gamedata.cubes[3]->setPosition(glm::vec3(-60, 0, 30));
+    gamedata.cubes[4]->setPosition(glm::vec3(-60, 0, -30));
 
-    gamedata.cube->setPosition(glm::vec3(0,-12.5, 0));
+    gamedata.cubes[3]->rotate(glm::vec3(0, 1, 0), M_PI / 4);
+    gamedata.cubes[4]->rotate(glm::vec3(0, 1, 0), M_PI / 4);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -157,65 +176,55 @@ void update(gamedata_st &gamedata)
 
     // TODO: Only move the rest of the way out of the portal after going through
     gamedata.farCamera->translate(camTranslation);
-    gamedata.portals[0]->passthrough(*gamedata.farCamera, camTranslation, *gamedata.portals[1]);
-    gamedata.portals[1]->passthrough(*gamedata.farCamera, camTranslation, *gamedata.portals[0]);
-
-    glm::vec3 intersectNormal1, intersectNormal2;
-    glm::vec3 intersection1, intersection2;
-    if(
-        gamedata.window->isMouseButtonPressed(GLFW_MOUSE_BUTTON_1) && 
-        gamedata.chamber->isColliding(gamedata.farCamera->getGlobalPosition(), 100.0f * gamedata.farCamera->get3DLookingVector(), intersectNormal1, intersection1) && 
-        gamedata.chamber->isColliding(gamedata.farCamera->getGlobalPosition() + gamedata.farCamera->getUpVector() * gamedata.portals[0]->getDimensions().y * 0.5f, 100.0f * gamedata.farCamera->get3DLookingVector(), intersectNormal2, intersection2) &&
-        intersectNormal1 == intersectNormal2
-    )
+    // If the object passes through the portal, it cannot pass through the other portal
+    if(!gamedata.portals[0]->passthrough(*gamedata.farCamera, camTranslation, *gamedata.portals[1]))
     {
-        gamedata.portals[0]->setOrientation(glm::fquat(1,0,0,0));
-        gamedata.portals[0]->setPosition(intersection1 + intersectNormal1 * 0.2f);
-        glm::vec3 wallUp = glm::normalize(intersection2 - intersection1);
-        
-        // Align the normal of the wall to the normal of the portal
-        glm::vec3 portalNormal = gamedata.portals[0]->getNormal();
-        float dot = glm::dot(portalNormal, intersectNormal1);
-        float angle = acos(dot);
-        glm::vec3 axis = glm::normalize(glm::cross(portalNormal, intersectNormal1));
-
-        if(dot > 0.99)
-        {
-            angle = 0;
-            axis = glm::vec3(1,0,0);
-        }
-        else if(dot < -0.99)
-        {
-            angle = M_PI;
-            axis = wallUp;
-        }
-        
-        gamedata.portals[0]->rotate(axis, angle);
-
-        // Align the up direction of the portal, to the up vector defined by the ray-casts
-        glm::vec3 portalUp = gamedata.portals[0]->getUp();
-        dot = glm::dot(portalUp, wallUp);
-        angle = acos(dot);
-        axis = glm::cross(portalUp, wallUp) * gamedata.portals[0]->getOrientation();
-
-        if(dot > 0.99)
-        {
-            angle = 0;
-            axis = glm::vec3(1,0,0);
-        }
-        else if(dot < -0.99)
-        {
-            angle = M_PI;
-            axis = intersectNormal1;
-        }
-
-        gamedata.portals[0]->rotate(axis, angle);
+        gamedata.portals[1]->passthrough(*gamedata.farCamera, camTranslation, *gamedata.portals[0]);
     }
 
-    //gamedata.portals[0]->rotate(gamedata.portals[0]->getNormal(), 0.01f);
+    if(
+        gamedata.window->isMouseButtonPressed(GLFW_MOUSE_BUTTON_1) || 
+        gamedata.window->isMouseButtonPressed(GLFW_MOUSE_BUTTON_2)
+    )
+    {
+        placePortals(gamedata);
+    }
 
     if (gamedata.window->isKeyDown(GLFW_KEY_ESCAPE))
         gamedata.window->close();
+}
+
+void placePortals(gamedata_st &gamedata)
+{
+    #define MAX_DIST 100000
+    float dist = MAX_DIST;
+    glm::vec3 pos, normal, up;
+    for(Cube *cube : gamedata.cubes)
+    {
+        glm::vec3 intersectNormal1, intersectNormal2;
+        glm::vec3 intersection1, intersection2;
+        if(
+            cube->isColliding(gamedata.farCamera->getGlobalPosition(), 150.0f * gamedata.farCamera->get3DLookingVector(), intersectNormal1, intersection1) && 
+            cube->isColliding(gamedata.farCamera->getGlobalPosition() + gamedata.farCamera->getUpVector(), 150.0f * gamedata.farCamera->get3DLookingVector(), intersectNormal2, intersection2) &&
+            intersectNormal1 == intersectNormal2
+        )
+        {
+            float tmpDist = glm::distance(gamedata.farCamera->getGlobalPosition(), intersection1);
+            if(dist > tmpDist)
+            {
+                dist = tmpDist;
+                normal = intersectNormal1;
+                pos = intersection1;
+                up = intersection2 - intersection1;
+            }
+        }
+    }
+
+    if(dist != MAX_DIST)
+    {
+        Portal *portal = gamedata.window->isMouseButtonDown(GLFW_MOUSE_BUTTON_1) ? gamedata.portals[0] : gamedata.portals[1];
+        portal->place(pos + normal * 0.2f, normal, up);
+    }
 }
 
 void render(gamedata_st &gamedata)
@@ -223,12 +232,14 @@ void render(gamedata_st &gamedata)
     int uTimeLoc = gamedata.shader->getUniformLocation("u_time");
     glUniform1f(uTimeLoc, (float) gamedata.window->getTime());
 
-    gamedata.lights[0]->updateUniform(*gamedata.shader);
-    gamedata.lights[1]->updateUniform(*gamedata.shader);
-    gamedata.lights[2]->updateUniform(*gamedata.shader);
+    for(int i = 0; i < N_LIGHTS; i++)
+    {
+        gamedata.lights[i]->updateUniform(*gamedata.shader);
 
-    //int uViewLoc = gamedata.shader->getUniformLocation("view");
-    //int uProjLoc = gamedata.shader->getUniformLocation("proj");
+    }
+
+    int uViewLoc = gamedata.shader->getUniformLocation("view");
+    int uProjLoc = gamedata.shader->getUniformLocation("proj");
 
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -238,12 +249,12 @@ void render(gamedata_st &gamedata)
 
     renderRecursivePortals(gamedata, view, proj, 10);
 
-/*     glDisable(GL_DEPTH_TEST);
+    glDisable(GL_DEPTH_TEST);
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(gamedata.nearCamera->getPerspectiveMatrix()));
     glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(glm::identity<glm::mat4>()));
     gamedata.portalGun->render();
     glEnable(GL_DEPTH_TEST);
- */
+
     gamedata.window->swapBuffers();
 }
 
@@ -311,11 +322,8 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
         glm::mat4 nextP1Proj = p2->getObliqueProjection(proj, nextP1View);
         glm::mat4 nextP2Proj = p1->getObliqueProjection(proj, nextP2View);
 
-        recursivePortalHelper(gamedata, proj, nextP1View, nextP1Proj, nextP2View, nextP2Proj, maxDepth, depth + 1);
-    }
-    else
-    {
         glClear(GL_DEPTH_BUFFER_BIT);
+        recursivePortalHelper(gamedata, proj, nextP1View, nextP1Proj, nextP2View, nextP2Proj, maxDepth, depth + 1);
     }
 
     // Draw the portals on the way back out
@@ -345,8 +353,10 @@ void renderWorld(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj)
     glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
-    gamedata.cube->render();
-    gamedata.chamber->render();
+    for(Cube *cube : gamedata.cubes)
+    {
+        cube->render();
+    }
     gamedata.player->render();
 }
 
@@ -355,10 +365,12 @@ void destroy(gamedata_st &gamedata)
     // Destroy all meshes
     gamedata.portals[0]->destroy();
     gamedata.portals[1]->destroy();
-    gamedata.chamber->destroy();
     gamedata.player->destroy();
-    gamedata.cube->destroy();
     gamedata.portalGun->destroy();
+    for(Cube *cube : gamedata.cubes)
+    {
+        cube->destroy();
+    }
 
     // Destory all textures
     gamedata.rubix->destroy();

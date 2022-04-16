@@ -4,7 +4,7 @@ in vec3 fragWorldPos;
 in vec3 fragNormal;
 in vec2 fragTextureCoordinate;
 
-#define N_LIGHTS 3
+#define N_LIGHTS 5
 uniform vec3 u_light_positions[N_LIGHTS];
 uniform vec3 u_light_colors[N_LIGHTS];
 uniform vec3 u_camera_position;
@@ -16,7 +16,7 @@ layout(binding = 0) uniform sampler2D texDiffuse;
 layout(binding = 1) uniform sampler2D noise;
 
 const float alpha = 32.0;
-const float ambient = 0.2;
+const float ambient = 0.3;
 const float spec_factor = 0.5;
 const float diff_factor = 1.0;
 
@@ -77,7 +77,7 @@ void main()
 
         if(radius > minRadius)
         {
-            gl_FragColor = vec4(u_portal_color - texture(noise, (-rotation * (fragTextureCoordinate - 0.5)) + 0.5).r * 0.5, 1.0 - texture(noise, fragTextureCoordinate).r * 0.2);
+            gl_FragColor = vec4(u_portal_color - texture(noise, (-rotation * (fragTextureCoordinate - 0.5)) + 0.5).r * 0.5, 1.0);
         }
         else
         {

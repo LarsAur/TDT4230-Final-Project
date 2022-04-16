@@ -83,9 +83,6 @@ public:
         setOrientation(glm::fquat(1,0,0,0));
         rotate(glm::vec3(0,1,0), yaw);
         rotate(glm::vec3(1,0,0), pitch);
-
-        //rotate(glm::vec3(dYaw, dPitch, 0));
-
     }
 
     // TODO: For some reason the x component is inverted

@@ -9,7 +9,7 @@
 #include <portal.hpp>
 #include <light.hpp>
 
-#define N_LIGHTS 3
+#define N_LIGHTS 5
 
 #define ALBEDO_TEXTURE_BINDING 0
 #define NOISE_TEXTURE_BINDING 1
@@ -20,11 +20,11 @@ typedef struct gamedata_st
 
     Node *root;
 
-    Cube *cube;
-    Cube *chamber;
-    Mesh *portalGun;
     Mesh *player;
+    Mesh *portalGun;
     Portal *portals[2];
+
+    std::vector<Cube*> cubes;
 
     Texture *portalGunAlbedo;
     Texture *wall;

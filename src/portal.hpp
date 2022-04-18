@@ -30,14 +30,14 @@ public:
         glUniform1i(uIsPortalLoc, 0);
     }
 
-    // Takes a node, the translation of the node and destination portal as input parameters.
-    // If the node is passing through this portal, the object is teleported to the destination portal with the correct offsets
+    // Takes a camera, the translation of the camera and destination portal as input parameters.
+    // If the camera is passing through this portal, the object is teleported to the destination portal with the correct offsets
     bool passthrough(Camera &node, glm::vec3 translation, Portal &destination)
     {
         float normalDotDir = glm::dot(getNormal(), translation);
         if(normalDotDir < 0) // Use less than 0 because we only want to enter the portal from the front
         {
-            float t = glm::dot(getNormal(), node.getPosition() - getPosition()) / -normalDotDir;
+            float t = glm::dot(getNormal(), getPosition() - node.getPosition()) / normalDotDir;
             if(t < 1 && t > 0)
             {
                 glm::mat3 rotation = glm::mat3_cast(glm::conjugate(getOrientation()));
@@ -50,11 +50,11 @@ public:
                 // a * u + b * v = transform * t
                 glm::mat3 inv = glm::inverse(glm::mat3(up, right, norm));
                 glm::vec3 ab = inv * (node.getPosition() + translation * t - getPosition());
-                // Check if a and b are within the oval of the portal 
+                // Check if a and b are within the elipse of the portal 
                 if(pow(2 * ab[0] / mDimensions.y, 2) + pow(2 * ab[1] / mDimensions.x, 2) <= 1)
                 {
                     // First calculate the position relative to the src portal
-                    // Rotate it into the xy-plane, and filp the x-axis
+                    // Rotate it into the xy-plane, and filp the x-axis (rotate 180 degrees)
                     // At last, rotate into the plane of the destination portal
                     glm::vec3 srcDeltaPos = (node.getGlobalPosition() + translation * t) - getGlobalPosition();
                     glm::vec3 neutralDeltaPos = srcDeltaPos * glm::inverse(rotation);
@@ -63,12 +63,8 @@ public:
 
                     // Calulate the yaw rotation (around the y axis)
                     glm::vec3 srcNormal = getNormal();
-                    srcNormal.y = 0;
-                    srcNormal = glm::normalize(srcNormal);
-                    float srcYaw = (float) atan2(srcNormal.x, srcNormal.z);
                     glm::vec3 destNormal = destination.getNormal();
-                    destNormal.y = 0;
-                    destNormal = glm::normalize(destNormal);
+                    float srcYaw = (float) atan2(srcNormal.x, srcNormal.z);
                     float destYaw = (float) atan2(destNormal.x, destNormal.z);
                     float deltaYaw = destYaw - srcYaw + M_PI;
                     
@@ -77,13 +73,10 @@ public:
                         deltaYaw = 0;
                     }
 
-                    // Calculate delta pitch
-                    srcNormal = getNormal();
-                    destNormal = destination.getNormal();
-                    float deltaPitch = (float) asin(srcNormal.y) - asin(destNormal.y) ;
+                    // TODO: Calculate the deltaPitch (Not required unless the portals have pitch themselvs)
 
                     node.setPosition(destination.getPosition() + destDeltaPos);
-                    node.direct(deltaYaw, deltaPitch);
+                    node.direct(deltaYaw, 0);
                     return true;
                 }
             }
@@ -107,14 +100,15 @@ public:
         float angle = acos(dot);
         glm::vec3 axis = glm::cross(normal, targetNormal);
 
-        if(dot > 0.99)
+        // Handle the case where they are in the same line
+        if(dot > 0.9999)
         {
             angle = 0;
             axis = glm::vec3(1,0,0);
         }
-        else if(dot < -0.99)
+        else if(dot < -0.9999)
         {
-            angle = M_PI;
+            angle = -M_PI;
             axis = targetUp;
         }
         rotate(axis, angle);
@@ -125,6 +119,7 @@ public:
         angle = acos(dot);
         axis = glm::cross(up, targetUp) * getOrientation();
 
+        // Handle the case where they are in the same line
         if(dot > 0.99)
         {
             angle = 0;
@@ -138,11 +133,14 @@ public:
         rotate(axis, angle);
     }
 
-    // Looking out out of the destination portal, with the same view as into this portal
+    // Return the view matrix which is looking  out of the destination portal, 
+    // with the same view as into this portal
     glm::mat4 getViewMatrix(glm::mat4 viewMatrix, Portal *destPortal)
     {
-        return viewMatrix * getTransformMatrix() * glm::rotate(glm::identity<glm::mat4>(), glm::radians(180.0f), glm::vec3(0.0, 1.0, 0.0)) // Rotate the camara to look out
-               * glm::inverse(destPortal->getTransformMatrix());
+        return viewMatrix 
+            * getTransformMatrix()                                                              
+            * glm::rotate(glm::identity<glm::mat4>(), (float) M_PI, glm::vec3(0.0, 1.0, 0.0)) // Rotate the camara to look out by rotting 
+            * glm::inverse(destPortal->getTransformMatrix());                                 // Move to the destination portal
     }
 
     glm::vec3 getNormal()
@@ -155,9 +153,11 @@ public:
         return glm::vec3(0, 1, 0) * glm::mat3_cast(glm::conjugate(getOrientation()));
     }
 
+    // Create an oblique projection matrix, given a standard view-frustum and the view matrix
     /* Source: http://www.terathon.com/lengyel/Lengyel-Oblique.pdf */
     glm::mat4 getObliqueProjection(glm::mat4 proj, glm::mat4 view)
     {
+        // Define the clip plane
         glm::vec3 normal = getNormal();
         float d = -glm::dot(normal, mPosition);
         glm::vec4 clipPlane = glm::inverse(glm::transpose(view)) * glm::vec4(normal, d);

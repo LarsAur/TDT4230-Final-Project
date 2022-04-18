@@ -86,7 +86,7 @@ class ObjMesh : public Mesh
 public:
     ObjMesh(std::string path, float scale)
     {
-        // Load shader from file
+        // Load mesh from file
         std::ifstream fileStream;
         fileStream.open(path.c_str());
         if (!fileStream)
@@ -222,45 +222,13 @@ public:
             albedo->bind(0);
         }
 
+        // The circle is drawn using trianglefan
         glDrawElements(GL_TRIANGLE_FAN, indices.size(), GL_UNSIGNED_INT, nullptr);
     }
 
     glm::vec2 getDimensions()
     {
         return mDimensions;
-    }
-};
-
-class Plane : public Mesh
-{
-public:
-    // Generates a plane in the xy-plane
-    Plane(glm::vec2 dimensions)
-    {
-        float halfW = dimensions.x / 2;
-        float halfH = dimensions.y / 2;
-
-        vertices.push_back(glm::vec3(-halfW, -halfH, 0));
-        vertices.push_back(glm::vec3(halfW, -halfH, 0));
-        vertices.push_back(glm::vec3(halfW, halfH, 0));
-        vertices.push_back(glm::vec3(-halfW, halfH, 0));
-
-        textureCoordinates.push_back(glm::vec2(0, 0));
-        textureCoordinates.push_back(glm::vec2(1, 0));
-        textureCoordinates.push_back(glm::vec2(1, 1));
-        textureCoordinates.push_back(glm::vec2(0, 1));
-
-        normals.push_back(glm::vec3(0, 0, -1));
-        normals.push_back(glm::vec3(0, 0, -1));
-        normals.push_back(glm::vec3(0, 0, -1));
-        normals.push_back(glm::vec3(0, 0, -1));
-
-        indices.push_back(0);
-        indices.push_back(1);
-        indices.push_back(2);
-        indices.push_back(0);
-        indices.push_back(2);
-        indices.push_back(3);
     }
 };
 
@@ -356,14 +324,15 @@ public:
         }
     }
 
-    // Takes a position and its translation and checks if there is an intersection of the cube.
+    // Takes a position and a ray and checks if there is an intersection with the cube.
     // If there is an intersection, the outNormal is the normal of the surface of the cube
-    // which is hit, the position and true is returned. If there is no collision, false is returned
-    bool isColliding(glm::vec3 position, glm::vec3 translation, glm::vec3 &outNormal, glm::vec3 &outIntersection)
+    // which is hit, the outIntersection is the position of the intersection. 
+    // The return value is whether or not there was an intersection 
+    bool isColliding(glm::vec3 position, glm::vec3 ray, glm::vec3 &outNormal, glm::vec3 &outIntersection)
     {
         const float epsilon = 0.001f;
         // Iterate the 6 faces of the cube
-        // TODO: This can have an early exit in some cases to make it more efficient
+        // TODO: This could have an early return in some cases to make it more efficient
         for(int face = 0; face < 6; face++)
         {
             // Normal of the face after rotation
@@ -374,13 +343,13 @@ public:
             glm::vec3 offset = 0.5f * normal * glm::length(mDimension * norms[face]);
             center = center + (mInside ? -offset : offset);
 
-            float normalDotDir = glm::dot(normal, translation);
+            float normalDotDir = glm::dot(normal, ray);
             if(normalDotDir < 0)
             {
-                float t = glm::dot(normal, position - center) / -normalDotDir;
+                float t = glm::dot(normal, center - position) / normalDotDir;
                 if(t < 1 && t > 0)
                 {
-                    glm::vec3 intersection = position + translation * t;
+                    glm::vec3 intersection = position + ray * t;
                     glm::vec3 localPosition = (intersection - getGlobalPosition()) * glm::inverse(getGlobalOrientationMatrix());
                     glm::vec3 absLocal = glm::abs(localPosition);
 

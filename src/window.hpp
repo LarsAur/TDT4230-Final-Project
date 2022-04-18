@@ -15,7 +15,10 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 static void framebufferSizeCallback(GLFWwindow *window, int width, int height)
 {
-	glViewport(0, 0, width, height);
+	if(width != 0 && height != 0)
+	{
+		glViewport(0, 0, width, height);
+	}
 }
 #pragma GCC diagnostic pop
 
@@ -71,12 +74,17 @@ public:
 		}
 
 		glfwMakeContextCurrent(mWindow);
-		glfwWindowHint(GLFW_SAMPLES, 4);
 		gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 		glfwSwapInterval(1);
 		
 		// Add window callbacks
 		glfwSetFramebufferSizeCallback(mWindow, framebufferSizeCallback);
+
+		// Print various OpenGL information
+		printf("%s: %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER));
+		printf("GLFW\t %s\n", glfwGetVersionString());
+		printf("OpenGL\t %s\n", glGetString(GL_VERSION));
+		printf("GLSL\t %s\n\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
 	}
 
 	int getWidth()

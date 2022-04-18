@@ -17,6 +17,9 @@ class Light : public Node
     {
         mPosition = position;
         mColor = color;
+
+        // Create an unique ID for each light, 
+        // this ID is used as the index in the uniform array in the shader
         mID = id;
         id++;
 
@@ -28,12 +31,13 @@ class Light : public Node
         return mColor;
     }
 
+    // Send the color and position of the light to the fragment shader
     void updateUniform(Shader &shader)
     {
         int uPositionLoc = shader.getUniformLocation("u_light_positions") + mID;
         glUniform3fv(uPositionLoc, 1, glm::value_ptr(getGlobalPosition()));
 
         int uColorLoc = shader.getUniformLocation("u_light_colors") + mID;
-        glUniform3fv(uColorLoc, 1, glm::value_ptr(mColor));
+        glUniform3fv(uColorLoc, 1, glm::value_ptr(getColor()));
     }
 };

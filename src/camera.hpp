@@ -21,27 +21,34 @@ class Camera : public Node
 private:
     Window *mWindow;
     float mfov;
-    float mnear;
-    float mfar;
-
-    float yaw, pitch;
+    float mNear;
+    float mFar;
+    float mYaw;
+    float mPitch;
 
 public:
     Camera(Window &window, glm::vec3 position, float fov, float near, float far)
     {
         setPosition(position);
         mfov = fov;
-        mnear = near;
-        mfar = far;
+        mNear = near;
+        mFar = far;
         mWindow = &window;
-        yaw = 0;
-        pitch = 0;
+        mYaw = 0;
+        mPitch = 0;
     }
 
     glm::mat4 getPerspectiveMatrix()
     {
-        float aspect = mWindow->getWidth() / (float) mWindow->getHeight();
-        return glm::perspective(mfov, aspect, mnear, mfar);
+        // Handle the possibility of having 0 and inf aspect ratio
+        float aspect = 1;
+        float w = mWindow->getWidth();
+        float h = mWindow->getHeight();
+        if(w != 0 && h != 0)
+        {
+            aspect = w / h;
+        }
+        return glm::perspective(mfov, aspect, mNear, mFar);
     }
 
     glm::mat4 getViewMatrix()
@@ -51,7 +58,9 @@ public:
         return rot * pos;
     }
 
-    void cameraTranslate(glm::vec3 translation)
+    // Translates the camera based on the viewing direction 
+    // translation = [right, up, forward] in view space
+    void translateCamera(glm::vec3 translation)
     {
         glm::vec3 upVector = glm::vec3(0, 1, 0);
         glm::vec3 forwardVector = get2DLookingVector();
@@ -62,8 +71,9 @@ public:
                     translation[2] * forwardVector;
     }
 
-    // Returns a vector in world space based upon the translation given as (right, up, forward)
-    glm::vec3 getFirstPersonTranslation(glm::vec3 translation)
+    // Returns the world space translation vector based on the viewing direction
+    // translation = [right, up, forward] in view space 
+    glm::vec3 getCameraTranslation(glm::vec3 translation)
     {
         glm::vec3 upVector = glm::vec3(0, 1, 0);
         glm::vec3 forwardVector = get2DLookingVector();
@@ -74,29 +84,32 @@ public:
                translation[2] * forwardVector;
     }
 
+    // Directs the viewing direction of the camera by delta yaw and delta pitch
+    // The pitch will be clamped between - PI / 2 and PI / 2
     void direct(float dYaw, float dPitch)
     {
-        yaw += dYaw;
-        pitch += dPitch;
-        pitch = std::min(std::max((double) pitch, -M_PI / 2 + 0.1f), M_PI / 2 - 0.1f);
+        mYaw += dYaw;
+        mPitch += dPitch;
+        mPitch = std::min(std::max((double) mPitch, -M_PI / 2 + 0.1f), M_PI / 2 - 0.1f);
 
         setOrientation(glm::fquat(1,0,0,0));
-        rotate(glm::vec3(0,1,0), yaw);
-        rotate(glm::vec3(1,0,0), pitch);
+        rotate(glm::vec3(0,1,0), mYaw);
+        rotate(glm::vec3(1,0,0), mPitch);
     }
 
-    // TODO: For some reason the x component is inverted
+    // Get the forward direction which the camera is facing in world space
     glm::vec3 get3DLookingVector()
     {
         return glm::vec3(0, 0, -1) * glm::mat3_cast(glm::conjugate(getOrientation()));
     }
 
+    // Get the up direction of the camera in world space
     glm::vec3 getUpVector()
     {
         return glm::vec3(0, 1, 0) * glm::mat3_cast(glm::conjugate(getOrientation()));
     }
 
-    // The y (up) component is set to zero
+    // Get the normalized looking vector in the xz-plane (y = 0)
     glm::vec3 get2DLookingVector()
     {
         glm::vec3 look = get3DLookingVector();

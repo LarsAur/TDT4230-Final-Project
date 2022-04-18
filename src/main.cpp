@@ -41,7 +41,7 @@ int main()
     int frames = 0;
     while (!gamedata.window->shouldClose())
     {
-        // Print the fps every 10 seconds
+        // Print the fps and average frametime every 10 seconds
         time = gamedata.window->getTime();
         if(time - prevTime >= 10.0)
         {
@@ -91,6 +91,7 @@ void init(gamedata_st &gamedata)
     gamedata.portals[1]->generateVertexData(*gamedata.shader);
     gamedata.player->generateVertexData(*gamedata.shader);
 
+    // Create a root node and connect the scene elements as a tree
     gamedata.root = new Node();
     gamedata.root->addChild(*gamedata.camera);
     gamedata.root->addChild(*gamedata.portals[0]);
@@ -104,20 +105,22 @@ void init(gamedata_st &gamedata)
         gamedata.cubes[0]->addChild(*gamedata.cubes[i]);
     }
 
-    // Add lights
+    // Create all lights
     gamedata.lights[0] = new Light(glm::vec3(0, 0, 0.5), glm::vec3(0.36, 0.58, 1.0));
     gamedata.lights[1] = new Light(glm::vec3(0, 0, 0.5), glm::vec3(1.0, 0.5, 0.05));
     gamedata.lights[2] = new Light(glm::vec3(-30,5,0), glm::vec3(0.5, 0.5, 0.5));
     gamedata.lights[3] = new Light(glm::vec3(0,5,0), glm::vec3(0.5, 0.5, 0.5));
     gamedata.lights[4] = new Light(glm::vec3(30,5,0), glm::vec3(0.5, 0.5, 0.5));
+    
+    // Add lights to the portals
     gamedata.portals[0]->addChild(*gamedata.lights[0]);
     gamedata.portals[1]->addChild(*gamedata.lights[1]);
 
-    // Load all textures
+    // Load all textures and genereate a perlin noise texture
     gamedata.wallTexture = new Texture("../res/textures/wall.png", LINEAR);
     gamedata.rubixTexture = new Texture("../res/textures/rubix.png", NEAREST);
     gamedata.turretTexture = new Texture("../res/textures/turret.bmp", LINEAR);
-    gamedata.noiseTexture = new Texture(255, 255, 4, 100, 34877u);
+    gamedata.noiseTexture = new Texture(255, 255, 4, 50, 34877u);
     gamedata.noiseTexture->bind(NOISE_TEXTURE_BINDING);
 
     for(Cube *cube : gamedata.cubes)
@@ -130,9 +133,9 @@ void init(gamedata_st &gamedata)
     gamedata.player->albedo = gamedata.rubixTexture;
     gamedata.turret->albedo = gamedata.turretTexture;
     
-    // Place the portal such that they are out of the scene
-    gamedata.portals[0]->setPosition(glm::vec3(0, 100, 0));
-    gamedata.portals[1]->translate(glm::vec3(0, 100, 0));
+    // Initial position of the portals
+    gamedata.portals[0]->setPosition(glm::vec3(-8, -24, -9.8f));
+    gamedata.portals[1]->setPosition(glm::vec3(8, -24, -9.8f));
 
     // Place the cubes to create the scene
     gamedata.cubes[1]->setPosition(glm::vec3(50, -20, 0));
@@ -144,8 +147,8 @@ void init(gamedata_st &gamedata)
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
-    glEnable(GL_MULTISAMPLE);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glEnable(GL_BLEND);
 
     gamedata.window->disableCursor();
@@ -153,32 +156,41 @@ void init(gamedata_st &gamedata)
 
 void update(gamedata_st &gamedata)
 {
+    // Update the global position of all the nodes in the scene
     gamedata.root->updateTransforms();
-    double time = gamedata.window->getTime();
 
+    // Rotate and bob the turret up and down
+    double time = gamedata.window->getTime();
     gamedata.turret->rotate(glm::vec3(0, 1, 0), 0.01f);
     gamedata.turret->setPosition(glm::vec3(0, -25 + sin(time), 0));
 
+    // Update the inputs of the window. E.g check if buttons were pressed this frame
     gamedata.window->updateInput();
 
+    // Direct the camera using the mouse
     gamedata.camera->direct(
         -gamedata.window->getMouseDelta().x / 500,
         -gamedata.window->getMouseDelta().y / 500
     );
     
-    glm::vec3 camTranslation = gamedata.camera->getFirstPersonTranslation(glm::vec3(
+    // Get the camera translation in world space based on keyboard input
+    glm::vec3 camTranslation = gamedata.camera->getCameraTranslation(glm::vec3(
         (gamedata.window->isKeyDown(GLFW_KEY_D) - gamedata.window->isKeyDown(GLFW_KEY_A)) / 5.0f,
         (gamedata.window->isKeyDown(GLFW_KEY_SPACE) - gamedata.window->isKeyDown(GLFW_KEY_LEFT_SHIFT)) / 5.0f,
-        (gamedata.window->isKeyDown(GLFW_KEY_W) - gamedata.window->isKeyDown(GLFW_KEY_S)) / 5.0f)
-    );
+        (gamedata.window->isKeyDown(GLFW_KEY_W) - gamedata.window->isKeyDown(GLFW_KEY_S)) / 5.0f    
+    ));
 
+    // Move the camera using the translation
     gamedata.camera->translate(camTranslation);
-    // If the object passes through the portal, it cannot pass through the other portal
+
+    // Check if the camera would pass through the portal and move it if it does
+    // If the camera passes through the portal, it cannot pass through the other portal
     if(!gamedata.portals[0]->passthrough(*gamedata.camera, camTranslation, *gamedata.portals[1]))
     {
         gamedata.portals[1]->passthrough(*gamedata.camera, camTranslation, *gamedata.portals[0]);
     }
 
+    // If the mouse buttons are pressed, attempt to place a portal
     if(
         gamedata.window->isMouseButtonPressed(GLFW_MOUSE_BUTTON_1) || 
         gamedata.window->isMouseButtonPressed(GLFW_MOUSE_BUTTON_2)
@@ -187,25 +199,30 @@ void update(gamedata_st &gamedata)
         placePortals(gamedata);
     }
 
+    // Exit the game by pressing escape
     if (gamedata.window->isKeyDown(GLFW_KEY_ESCAPE))
         gamedata.window->close();
 }
 
+// Attempt to place a portal by casting two rays intersecting with the cubes in the scene
 void placePortals(gamedata_st &gamedata)
 {
-    #define MAX_DIST 100000
+    #define MAX_DIST 1000.0f // Max distance for the rays
     float dist = MAX_DIST;
-    glm::vec3 pos, normal, up;
+    glm::vec3 pos, normal, up;  // Positions, normal and up vector of the wall that is hit
     for(Cube *cube : gamedata.cubes)
     {
+        // Cast two rays, one from the camara and one from some distance upward in viewspace
+        // This is to find the upward vector along surfaces which have a non-zero z-value in the normalvector
         glm::vec3 intersectNormal1, intersectNormal2;
         glm::vec3 intersection1, intersection2;
         if(
-            cube->isColliding(gamedata.camera->getGlobalPosition(), 150.0f * gamedata.camera->get3DLookingVector(), intersectNormal1, intersection1) && 
-            cube->isColliding(gamedata.camera->getGlobalPosition() + gamedata.camera->getUpVector(), 150.0f * gamedata.camera->get3DLookingVector(), intersectNormal2, intersection2) &&
-            intersectNormal1 == intersectNormal2
+            cube->isColliding(gamedata.camera->getGlobalPosition(), MAX_DIST * gamedata.camera->get3DLookingVector(), intersectNormal1, intersection1) && 
+            cube->isColliding(gamedata.camera->getGlobalPosition() + gamedata.camera->getUpVector(), MAX_DIST * gamedata.camera->get3DLookingVector(), intersectNormal2, intersection2) &&
+            intersectNormal1 == intersectNormal2 // Check if the normals are equal, to not place portals in corners
         )
         {
+            // Find the closest intersection point
             float tmpDist = glm::distance(gamedata.camera->getGlobalPosition(), intersection1);
             if(dist > tmpDist)
             {
@@ -217,6 +234,7 @@ void placePortals(gamedata_st &gamedata)
         }
     }
 
+    // Place the portal corresponding to the mouse button pressed
     if(dist != MAX_DIST)
     {
         Portal *portal = gamedata.window->isMouseButtonDown(GLFW_MOUSE_BUTTON_1) ? gamedata.portals[0] : gamedata.portals[1];
@@ -226,27 +244,27 @@ void placePortals(gamedata_st &gamedata)
 
 void render(gamedata_st &gamedata)
 {
+    // Send the time to the fragmentshader
     int uTimeLoc = gamedata.shader->getUniformLocation("u_time");
     glUniform1f(uTimeLoc, (float) gamedata.window->getTime());
 
+    // Update all lights in the fragment shader
     for(int i = 0; i < N_LIGHTS; i++)
     {
         gamedata.lights[i]->updateUniform(*gamedata.shader);
     }
 
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
+    // Render the recursive portals
     glm::mat4 view = gamedata.camera->getViewMatrix();
     glm::mat4 proj = gamedata.camera->getPerspectiveMatrix();
-
     renderRecursivePortals(gamedata, view, proj, 10);
 
     gamedata.window->swapBuffers();
 }
 
 void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1View, glm::mat4 p1Proj, glm::mat4 p2View, glm::mat4 p2Proj, int maxDepth, int depth);
-
 void renderRecursivePortals(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj, int maxDepth)
 {
     glEnable(GL_STENCIL_TEST);
@@ -264,7 +282,8 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
     Portal *p1 = gamedata.portals[0];
     Portal *p2 = gamedata.portals[1];
 
-    // Render the world inside portal 1 on depth 0, this is the current world
+    // Render the world inside portal 1. 
+    // On depth 0, this is the world outside the portals
     glStencilFunc(GL_EQUAL, depth, 0xff);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     renderWorld(gamedata, p1View, p1Proj);
@@ -279,13 +298,7 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
 
     if (depth < maxDepth)
     {
-        // We have to disable the color mask here when drawing the stencils.
-        // This is due to the portal not rendering correcly because the oblique projection matrix
-        // does not create a consitant depth value
-        // This the rendering of the portals have to be done on the way "back out" using the normal projection matrix
-        // This is also to get the correct transparency
-        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-        // Create stencil for portal 1
+        // Create the stencil for portal 1 by incrementing the stencil buffer
         glStencilFunc(GL_EQUAL, depth, 0xff);
         glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
 
@@ -294,7 +307,7 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
 
         p1->render();
 
-        // Create stencil for portal 2
+        // Create the stencil for portal 2 by decrementing the stencil buffer
         glStencilFunc(GL_EQUAL, (uint8_t)-depth, 0xff);
         glStencilOp(GL_KEEP, GL_KEEP, GL_DECR_WRAP);
 
@@ -302,13 +315,18 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
         glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(p2Proj));
 
         p2->render();
-        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
+        // Create the view from the destination portal given the view used then looking into it
         glm::mat4 nextP1View = p1->getViewMatrix(p1View, p2);
         glm::mat4 nextP2View = p2->getViewMatrix(p2View, p1);
+        // Create the oblique projections using the standard projection, assumes that the input has a standard view-frustum
         glm::mat4 nextP1Proj = p2->getObliqueProjection(proj, nextP1View);
         glm::mat4 nextP2Proj = p1->getObliqueProjection(proj, nextP2View);
 
+        // Clearing the depth buffer is necessary because the objects inside the portal can have
+        // both a lower and higher depth value, because the near plane is moved
+        // By clearing the depth buffer, it is ensured that everything inside the portals are rendered
+        // The stencil buffer ensures that the fragments outside of the portal are not overwritten.
         glClear(GL_DEPTH_BUFFER_BIT);
         recursivePortalHelper(gamedata, proj, nextP1View, nextP1Proj, nextP2View, nextP2Proj, maxDepth, depth + 1);
     }
@@ -329,17 +347,19 @@ void recursivePortalHelper(gamedata_st gamedata, glm::mat4 proj, glm::mat4 p1Vie
 
 void renderWorld(gamedata_st &gamedata, glm::mat4 view, glm::mat4 proj)
 {
-    // Get the camera position and send it to the shader
+    // Send the camera position, view, and projection
+    // This is required to do every render, because the camera position would be different
+    // depending on the state of the recursion.
     int uCameraLoc = gamedata.shader->getUniformLocation("u_camera_position");
-    glm::vec3 camPosition = glm::vec3(glm::column(glm::inverse(view), 3));
-    glUniform3fv(uCameraLoc, 1, glm::value_ptr(camPosition));
-
     int uViewLoc = gamedata.shader->getUniformLocation("view");
     int uProjLoc = gamedata.shader->getUniformLocation("proj");
-
+    
+    glm::vec3 camPosition = glm::vec3(glm::column(glm::inverse(view), 3));
+    glUniform3fv(uCameraLoc, 1, glm::value_ptr(camPosition));
     glUniformMatrix4fv(uViewLoc, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(uProjLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
+    // Render all scene elements
     for(Cube *cube : gamedata.cubes)
     {
         cube->render();

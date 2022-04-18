@@ -24,9 +24,9 @@ const float diff_factor = 1.0;
 
 void main()
 {
-
     if(u_is_portal == 0)
     {
+        // Render using phong lighting
         vec3 diffuse = vec3(0);
         vec3 specular = vec3(0);
         vec3 V = u_camera_position - fragWorldPos;
@@ -50,7 +50,7 @@ void main()
     }
     else
     {
-        // Estimating an eliptic border
+        // Render the border of the portal using noise and an estimation of an eliptic border
         // https://stackoverflow.com/questions/51384738/draw-a-ellipse-curve-in-fragment-shader
         mat2 rotation;
         rotation[0] = vec2(cos(u_time), -sin(u_time));

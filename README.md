@@ -1,6 +1,6 @@
 # TDT4230-Final-Project
 This was my delivery for the final project in TDT4230 - Graphics and Visualization at NTNU.
-I implemented Portals in OpenGL using stencil buffers. 
+I implemented Portals in OpenGL using stencil buffers. Demo video: https://youtu.be/noxH2141WDc
 
 When playing, portals can be placed by looking at the walls and clicking the mouse buttons. The
 player can move using the `WASD`, `left shift` and `space`.
